@@ -1,19 +1,19 @@
 # MelonLoader VS Wizard
 
-An automated Visual Studio template for creating MelonLoader mods and plugins. It supports MelonLoader 0.5.0 to the latest as well as Il2Cpp and Mono games.
+Visual Studio templates and an independent project-generation library for MelonLoader mods and plugins. Supports Mono and IL2CPP installations with MelonLoader 0.5.0 or newer, including projects with separate targets for both runtimes.
 
 ## What does it handle?
 It handles the creation of the required boilerplate (the `MelonMod`/`MelonPlugin` class, `MelonInfo`, and `MelonGame`) as well as referencing the required assemblies for mod development, mainly MelonLoader, Harmony, and for Il2Cpp, proxy assemblies and the unhollower (Il2CppAssemblyUnhollower or Il2CppInterop). It also handles variation between MelonLoader or Unity versions, such as framework versions or override changes.
 
 ## Usage
-0. Download MelonLoader to your game and run it once before continuing.
+0. Install MelonLoader to your game. If targeting Il2Cpp, run it once before continuing (to generate Il2CppInterop assemblies).
 1. Download the VSIX from the [Releases](https://github.com/TrevTV/MelonLoader.VSWizard/releases) tab.
 2. Close all instances of Visual Studio and run the VSIX installer (double-clicking it should open it).
 3. Open Visual Studio and create a new project.
-4. Search for `MelonLoader` and click on either Mod or Plugin.
+4. Search for `MelonLoader` and choose Mod, Plugin, or Mod (Mono and IL2CPP).
 5. Enter the project info and press Create.
-6. Select the EXE of the game you are modding and press Open.
-7. Wait for the project creation and it should open a Visual Studio window with a working project.
+6. Select the game executable. For the dual-runtime template, select a Mono installation first, then an IL2CPP installation.
+7. The generated project opens with references to the selected installation or installations.
 
 You may want to change the author in the `MelonInfo` attribute. It defaults to your computer's username.
 
@@ -86,7 +86,9 @@ The Visual Studio wizard keeps its existing automatic selection; interactive sel
 </Project>
 ```
 
-The generator determines the directory values from the selected installation; the generated project references `$(GameAssembliesPath)/UnityEngine.CoreModule.dll` or `$(LoaderAssembliesPath)/MelonLoader.dll` directly. Mono and older loader installations get their actual directories instead. Additional reference folders receive `ReferenceAssembliesPath1`, etc. Folders outside the installation retain independent absolute paths.
+The generator determines the directory values from the selected installation. The generated project references `$(GameAssembliesPath)/UnityEngine.CoreModule.dll` or `$(LoaderAssembliesPath)/MelonLoader.dll` directly. 
+
+Mono and older loader installations get their actual directories instead. Additional reference folders receive `ReferenceAssembliesPath1`, etc. Folders outside the installation retain independent absolute paths.
 
 Moving an installation only requires editing `GamePath`. Each assembly directory can also be overridden independently, including with a project-relative value such as `$(MSBuildThisFileDirectory)references/game`. Set `ProjectOptions.CopyAssemblies` to generate a local reference snapshot instead.
 
@@ -104,15 +106,15 @@ ProjectGenerationResult result = generator.GeneratePlan(options);
 result.CopyAssembliesTo(projectDirectory);
 ```
 
-Generation never writes files. `AssemblyCopies` records each absolute source path and project-relative destination. `CopyAssembliesTo` copies selected references and the required loader support references, preserving existing files unless `overwrite: true` is supplied. It checks missing sources and existing destinations before beginning; filesystem errors during copying can still leave a partial snapshot. Sources are read when the copy plan is executed, not captured as bytes during generation.
+Generation never writes files. `AssemblyCopies` records each absolute source path and project-relative destination. `CopyAssembliesTo` copies selected references and the required loader support references, refusing to overwrite existing files unless `overwrite: true` is supplied. It checks missing sources and existing destinations before beginning. Filesystem errors during copying can still leave a partial snapshot. Sources are read when the copy plan is executed, not captured as bytes during generation.
 
 Generated assembly properties point to `$(MSBuildThisFileDirectory)references/Mono/...` or `references/IL2CPP/...`, with separate game, loader, and additional reference folders. Compiler references have `Private=false`, so these DLLs are not automatically copied into build output. The snapshot can move with the project and compilation no longer requires the game installation. Deployment remains independent and still requires `GamePath` when enabled.
 
-The original `Generate(options)` API still returns text files only; when copying is enabled, use `GeneratePlan` to get the matching copy operations too. Copying is disabled by default and the existing Visual Studio wizard continues referencing the installation. No Git ignore policy is imposed. A warning reminds callers to check redistribution permissions before publishing copied DLLs. The snapshot contains resolved selections, not an automatically discovered closure of arbitrary transitive dependencies.
+`Generate(options)` API returns text files only. When copying is enabled, use `GeneratePlan` to get the matching copy operations too.
 
 ### Mono and IL2CPP projects
 
-The **MelonLoader Mod (Mono and IL2CPP)** Visual Studio template asks for one Mono installation and one IL2CPP installation. These can be different editions of one game or different games used as development targets. Both need valid references. The generated project has configurations `Mono-Debug`, `Mono-Release`, `Il2Cpp-Debug`, and `Il2Cpp-Release`, with platform and CPU target `AnyCPU`. It includes a standalone `.slnx` with exactly the four runtime/build combinations; open that solution when working outside an existing solution.
+The **MelonLoader Mod (Mono and IL2CPP)** Visual Studio template asks for one Mono installation and one IL2CPP installation. These can be different editions of one game or different games used as development targets. The generated project has configurations `Mono-Debug`, `Mono-Release`, `Il2Cpp-Debug`, and `Il2Cpp-Release`, with platform `AnyCPU` like normal.
 
 Your own tool can generate the same project without Visual Studio:
 
@@ -140,11 +142,21 @@ DualRuntimeOptions options = new()
 ProjectGenerationResult result = generator.GenerateDualRuntimePlan(options);
 ```
 
-Each runtime independently chooses its framework, references, copied snapshot, and deployment destination. `Directory.Build.props` keeps those paths in conditional groups. The runtime defines `MONO` or `IL2CPP`; the Debug/Release portion of the configuration selects optimization, debug information, and `DEBUG`/`TRACE`. Output and intermediate directories are separated by configuration and platform to avoid sharing compiler/restore artifacts between targets. The generated entry class shares its initialization body between runtimes. Conditional compilation is added only when the game attributes or initialization method differ between targets. Supporting different game APIs in your own code remains your responsibility. The library also supports dual-runtime plugins through `Kind = ProjectKind.Plugin`.
+Each runtime independently chooses its framework, references, copied snapshot, and deployment destination. `Directory.Build.props` keeps those paths in conditional groups. Supporting different game APIs in your own code remains your responsibility. 
+
+The library also supports dual-runtime plugins through `Kind = ProjectKind.Plugin`.
 
 ```powershell
 dotnet build MyMod.slnx -c Mono-Debug
 dotnet build MyMod.slnx -c Il2Cpp-Release
 ```
 
-Tests evaluate all four combinations with installation and copied references, then compile all four against a minimal loader API fixture. Those fixtures verify generation and build mechanics, not actual in-game compatibility.
+Tests evaluate all four combinations with installation and copied references, then compile all four against minimal loader API fixtures with both matching and differing initialization methods. Those fixtures verify generation and build mechanics, not actual in-game compatibility.
+
+### Editing the templates
+
+Template files live in [`MelonLoader.ProjectGeneration/Templates`](MelonLoader.ProjectGeneration/Templates), in the `Mod`, `Plugin`, and `DualRuntime` directories. Edit `Core.cs` for the entry class, `ProjectTemplate.csproj` for project settings, and `Directory.Build.props` for assembly paths and deployment defaults. The dual-runtime template also has `Solution.slnx` for solution configuration mappings.
+
+These files are embedded into the library and linked into the Visual Studio template packages at build time. Rebuild the library after editing them; rebuild and reinstall the VSIX to update the installed Visual Studio templates.
+
+The dual-runtime `Core.cs` is its own shared-class template. Its `$GAME_ATTRIBUTE$` and `$INIT_METHOD$` placeholders are populated by [`DualRuntimeGenerator.cs`](MelonLoader.ProjectGeneration/DualRuntimeGenerator.cs), which emits conditional lines only when the two targets differ. It does not insert separate copies of the Mod or Plugin entry class.
