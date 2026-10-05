@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Description>Independent game inspection and project generation for MelonLoader mods and plugins.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Templates/**/*.cs" />
+    <PackageReference Include="AssetRipper.Primitives" Version="3.2.0" />
+    <PackageReference Include="AssetsTools.NET" Version="3.0.4" />
+    <EmbeddedResource Include="Resources/classdata.tpk" />
+    <EmbeddedResource Include="Templates/Mod/Core.cs" LogicalName="Templates.Mod.Core.cs" />
+    <EmbeddedResource Include="Templates/Mod/ProjectTemplate.csproj" LogicalName="Templates.Mod.ProjectTemplate.csproj" />
+    <EmbeddedResource Include="Templates/Mod/Directory.Build.props" LogicalName="Templates.Mod.Directory.Build.props" />
+    <EmbeddedResource Include="Templates/Plugin/Core.cs" LogicalName="Templates.Plugin.Core.cs" />
+    <EmbeddedResource Include="Templates/Plugin/ProjectTemplate.csproj" LogicalName="Templates.Plugin.ProjectTemplate.csproj" />
+    <EmbeddedResource Include="Templates/Plugin/Directory.Build.props" LogicalName="Templates.Plugin.Directory.Build.props" />
+    <EmbeddedResource Include="Templates/ManualMod/Core.cs" LogicalName="Templates.ManualMod.Core.cs" />
+    <EmbeddedResource Include="Templates/ManualMod/ProjectTemplate.csproj" LogicalName="Templates.ManualMod.ProjectTemplate.csproj" />
+    <EmbeddedResource Include="Templates/ManualPlugin/Core.cs" LogicalName="Templates.ManualPlugin.Core.cs" />
+    <EmbeddedResource Include="Templates/ManualPlugin/ProjectTemplate.csproj" LogicalName="Templates.ManualPlugin.ProjectTemplate.csproj" />
+  </ItemGroup>
+</Project>

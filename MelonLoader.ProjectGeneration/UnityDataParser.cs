@@ -10,7 +10,7 @@ using System.Text.RegularExpressions;
 using UnityVersion = AssetRipper.Primitives.UnityVersion;
 using System.Reflection;
 
-namespace MelonLoader.WizardExtension
+namespace MelonLoader.ProjectGeneration
 {
     // copied from MelonLoader
     internal static class UnityDataParser
@@ -61,7 +61,7 @@ namespace MelonLoader.WizardExtension
                     return;
 
                 ClassPackageFile classPackage = null;
-                using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("MelonLoader.WizardExtension.Resources.classdata.tpk"))
+                using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("MelonLoader.ProjectGeneration.Resources.classdata.tpk"))
                     classPackage = assetsManager.LoadClassPackage(stream);
 
                 if (!instance.file.Metadata.TypeTreeEnabled)
@@ -121,13 +121,13 @@ namespace MelonLoader.WizardExtension
             string unityPlayerPath = info.ExePath;
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
             {
-                var unityVer = FileVersionInfo.GetVersionInfo(unityPlayerPath);
+                FileVersionInfo unityVer = FileVersionInfo.GetVersionInfo(unityPlayerPath);
                 return new UnityVersion((ushort)unityVer.FileMajorPart, (ushort)unityVer.FileMinorPart, (ushort)unityVer.FileBuildPart);
             }
 
             try
             {
-                var globalgamemanagersPath = Path.Combine(info.DataPath, "globalgamemanagers");
+                string globalgamemanagersPath = Path.Combine(info.DataPath, "globalgamemanagers");
                 if (File.Exists(globalgamemanagersPath))
                     return GetVersionFromGlobalGameManagers(File.ReadAllBytes(globalgamemanagersPath));
             }
@@ -135,7 +135,7 @@ namespace MelonLoader.WizardExtension
 
             try
             {
-                var dataPath = Path.Combine(info.DataPath, "data.unity3d");
+                string dataPath = Path.Combine(info.DataPath, "data.unity3d");
                 if (File.Exists(dataPath))
                     return GetVersionFromDataUnity3D(File.OpenRead(dataPath));
             }
@@ -146,8 +146,8 @@ namespace MelonLoader.WizardExtension
 
         private static UnityVersion GetVersionFromGlobalGameManagers(byte[] ggmBytes)
         {
-            var verString = new StringBuilder();
-            var idx = 0x14;
+            StringBuilder verString = new();
+            int idx = 0x14;
             while (ggmBytes[idx] != 0)
             {
                 verString.Append(Convert.ToChar(ggmBytes[idx]));
@@ -174,7 +174,7 @@ namespace MelonLoader.WizardExtension
 
         private static UnityVersion GetVersionFromDataUnity3D(Stream fileStream)
         {
-            var verString = new StringBuilder();
+            StringBuilder verString = new();
 
             if (fileStream.CanSeek)
                 fileStream.Seek(0x12, SeekOrigin.Begin);
@@ -186,7 +186,7 @@ namespace MelonLoader.WizardExtension
 
             while (true)
             {
-                var read = fileStream.ReadByte();
+                int read = fileStream.ReadByte();
                 if (read == 0)
                     break;
                 verString.Append(Convert.ToChar(read));

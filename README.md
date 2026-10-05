@@ -22,3 +22,33 @@ You may want to change the author in the `MelonInfo` attribute. It defaults to y
 - [AssetsTools.NET](https://github.com/nesrak1/AssetsTools.NET) is licensed under the MIT License. See [LICENSE](https://github.com/nesrak1/AssetsTools.NET/blob/master/LICENSE) for the full License.
 - [StrongNamer](https://github.com/dsplaisted/strongnamer) is licensed under the MIT License. See [LICENSE](https://github.com/dsplaisted/strongnamer/blob/master/LICENSE) for the full License.
 - [MelonLoader](https://github.com/LavaGang/MelonLoader) is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/LavaGang/MelonLoader/blob/master/LICENSE.md) for the full License.
+
+## Reusable project generation
+
+`MelonLoader.ProjectGeneration` is a .NET Standard 2.0 library with no Visual Studio or UI dependencies. It owns game inspection, framework/reference selection, Unity metadata parsing, and the template contents. The existing template projects package linked library assets for Visual Studio; the wizard handles dialogs and forwards the library's replacements.
+
+Reference its project from another application:
+
+```csharp
+using MelonLoader.ProjectGeneration;
+using System.Collections.Generic;
+
+GameInspector inspector = new();
+GameInfo game = inspector.Inspect(gameExecutable);
+ProjectGenerator generator = new();
+ProjectOptions options = new()
+{
+    ProjectName = "MyMod",
+    RootNamespace = "MyMod",
+    Author = "Me",
+    Kind = ProjectKind.Mod,
+    Game = game
+};
+IReadOnlyDictionary<string, string> files = generator.Generate(options);
+```
+
+`files` contains relative filenames and their complete contents. The caller controls previewing and writing them. Use a valid C# namespace and a project name suitable for a filename. `Inspect` reads the installation and throws exceptions for invalid inputs; it never displays UI. `CreateReplacements` is available for hosts using token-based templates. Game inspection still requires MelonLoader to be installed and, for IL2CPP, its assemblies to have been generated.
+
+Build the library independently with `dotnet build MelonLoader.ProjectGeneration`. Building the VSIX also requires Visual Studio SDK build tooling and the existing signing key (`MelonLoader.WizardExtension/key.snk`, not committed).
+
+Run the xUnit tests with `dotnet test tests/MelonLoader.ProjectGeneration.Tests`. They use temporary fixture installations rather than requiring a real game.
