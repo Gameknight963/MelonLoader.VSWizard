@@ -1,0 +1,67 @@
+<Project>
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Mono</Configuration>
+    <Platform Condition="'$(Platform)' == ''">Debug</Platform>
+    <BaseIntermediateOutputPath>obj/$(Configuration)/$(Platform)/</BaseIntermediateOutputPath>
+  </PropertyGroup>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+  <PropertyGroup>
+    <Configurations>Mono;Il2Cpp</Configurations>
+    <Platforms>Debug;Release</Platforms>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <RootNamespace>$safeprojectname$</RootNamespace>
+    <AssemblyName>$safeprojectname$</AssemblyName>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <OutputPath>bin/$(Configuration)/$(Platform)/</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Mono'">
+    <TargetFramework>net$MONO_FRAMEWORK_VER$</TargetFramework>
+    <ImplicitUsings>$MONO_IMPLICIT_USINGS$</ImplicitUsings>
+    <DefineConstants>$(DefineConstants);MONO</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Il2Cpp'">
+    <TargetFramework>net$IL2CPP_FRAMEWORK_VER$</TargetFramework>
+    <ImplicitUsings>$IL2CPP_IMPLICIT_USINGS$</ImplicitUsings>
+    <DefineConstants>$(DefineConstants);IL2CPP</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)' == 'Debug'">
+    <Optimize>false</Optimize>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)' == 'Release'">
+    <Optimize>true</Optimize>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Mono'">
+$MONO_PROJ_REFERENCES$
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Il2Cpp'">
+$IL2CPP_PROJ_REFERENCES$
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Core.cs" />
+    <Content Include="Directory.Build.props" />
+  </ItemGroup>
+  <Target Name="ValidateRuntimeConfiguration" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(Configuration)' != 'Mono' And '$(Configuration)' != 'Il2Cpp'"
+           Text="Choose the Mono or Il2Cpp configuration." />
+    <Error Condition="'$(Platform)' != 'Debug' And '$(Platform)' != 'Release'"
+           Text="Choose the Debug or Release platform. CPU target remains AnyCPU." />
+  </Target>
+  <Target Name="DeployOutput" AfterTargets="Build" Condition="'$(DeployOnBuild)' == 'true'">
+    <Error Condition="'$(GamePath)' == '' Or !Exists('$(GamePath)')"
+           Text="Set this runtime's GamePath to an existing installation or disable DeployOnBuild." />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GamePath)/$DEPLOY_FOLDER$" SkipUnchangedFiles="true" />
+  </Target>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+</Project>

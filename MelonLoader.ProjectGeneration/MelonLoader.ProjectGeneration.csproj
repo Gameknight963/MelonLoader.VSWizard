@@ -15,5 +15,9 @@
     <EmbeddedResource Include="Templates/Plugin/Core.cs" LogicalName="Templates.Plugin.Core.cs" />
     <EmbeddedResource Include="Templates/Plugin/ProjectTemplate.csproj" LogicalName="Templates.Plugin.ProjectTemplate.csproj" />
     <EmbeddedResource Include="Templates/Plugin/Directory.Build.props" LogicalName="Templates.Plugin.Directory.Build.props" />
+    <EmbeddedResource Include="Templates/DualRuntime/Core.cs" LogicalName="Templates.DualRuntime.Core.cs" />
+    <EmbeddedResource Include="Templates/DualRuntime/Directory.Build.props" LogicalName="Templates.DualRuntime.Directory.Build.props" />
+    <EmbeddedResource Include="Templates/DualRuntime/ProjectTemplate.csproj" LogicalName="Templates.DualRuntime.ProjectTemplate.csproj" />
+    <EmbeddedResource Include="Templates/DualRuntime/Solution.slnx" LogicalName="Templates.DualRuntime.Solution.slnx" />
   </ItemGroup>
 </Project>

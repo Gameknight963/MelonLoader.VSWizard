@@ -1,0 +1,14 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Mono" />
+    <BuildType Name="Il2Cpp" />
+    <Platform Name="Debug" />
+    <Platform Name="Release" />
+  </Configurations>
+  <Project Path="$safeprojectname$.csproj">
+    <BuildType Solution="Mono|*" Project="Mono" />
+    <BuildType Solution="Il2Cpp|*" Project="Il2Cpp" />
+    <Platform Solution="*|Debug" Project="Debug" />
+    <Platform Solution="*|Release" Project="Release" />
+  </Project>
+</Solution>

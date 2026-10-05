@@ -109,3 +109,42 @@ Generation never writes files. `AssemblyCopies` records each absolute source pat
 Generated assembly properties point to `$(MSBuildThisFileDirectory)references/Mono/...` or `references/IL2CPP/...`, with separate game, loader, and additional reference folders. Compiler references have `Private=false`, so these DLLs are not automatically copied into build output. The snapshot can move with the project and compilation no longer requires the game installation. Deployment remains independent and still requires `GamePath` when enabled.
 
 The original `Generate(options)` API still returns text files only; when copying is enabled, use `GeneratePlan` to get the matching copy operations too. Copying is disabled by default and the existing Visual Studio wizard continues referencing the installation. No Git ignore policy is imposed. A warning reminds callers to check redistribution permissions before publishing copied DLLs. The snapshot contains resolved selections, not an automatically discovered closure of arbitrary transitive dependencies.
+
+### Mono and IL2CPP projects
+
+The **MelonLoader Mod (Mono and IL2CPP)** Visual Studio template asks for one Mono installation and one IL2CPP installation. These can be different editions of one game or different games used as development targets. Both need valid references. The generated project has configurations `Mono` and `Il2Cpp`, platforms `Debug` and `Release`, and CPU target `AnyCPU`. It includes a standalone `.slnx` with exactly the four runtime/build combinations; open that solution when working outside an existing solution.
+
+Your own tool can generate the same project without Visual Studio:
+
+```csharp
+DualRuntimeOptions options = new()
+{
+    ProjectName = "MyMod",
+    RootNamespace = "MyMod",
+    Author = "Me",
+    Mono = new RuntimeTargetOptions
+    {
+        Game = monoGame,
+        References = monoSelection,
+        CopyAssemblies = true,
+        DeployOnBuild = false
+    },
+    Il2Cpp = new RuntimeTargetOptions
+    {
+        Game = il2CppGame,
+        References = il2CppSelection,
+        CopyAssemblies = true,
+        DeployOnBuild = false
+    }
+};
+ProjectGenerationResult result = generator.GenerateDualRuntimePlan(options);
+```
+
+Each runtime independently chooses its framework, references, copied snapshot, and deployment destination. `Directory.Build.props` keeps those paths in conditional groups. The runtime defines `MONO` or `IL2CPP`; the build platform selects optimization, debug information, and `DEBUG`/`TRACE`. Output and intermediate directories are separated by both dimensions to avoid sharing compiler/restore artifacts between targets. The generated entry class uses the appropriate game attributes and initialization override for each runtime. Supporting different game APIs in your own code remains your responsibility. The library also supports dual-runtime plugins through `Kind = ProjectKind.Plugin`.
+
+```powershell
+dotnet build MyMod.slnx -c Mono -p:Platform=Debug
+dotnet build MyMod.slnx -c Il2Cpp -p:Platform=Release
+```
+
+Tests evaluate all four combinations with installation and copied references, then compile all four against a minimal loader API fixture. Those fixtures verify generation and build mechanics, not actual in-game compatibility.

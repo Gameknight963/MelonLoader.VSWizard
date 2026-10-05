@@ -55,6 +55,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="MelonLoader.WizardExtensionPackage.cs" />
     <Compile Include="WizardImplementation.cs" />
+    <Compile Include="DualRuntimeWizardImplementation.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="key.snk" />
@@ -89,6 +90,12 @@
     <ProjectReference Include="..\MelonLoader.ProjectGeneration\MelonLoader.ProjectGeneration.csproj">
       <Name>MelonLoader.ProjectGeneration</Name>
       <IncludeOutputGroupsInVSIX>BuiltProjectOutputGroup</IncludeOutputGroupsInVSIX>
+    </ProjectReference>
+    <ProjectReference Include="..\MelonLoader.DualRuntimeModTemplate\MelonLoader.DualRuntimeModTemplate.csproj">
+      <Name>MelonLoader.DualRuntimeModTemplate</Name>
+      <VSIXSubPath>ProjectTemplates</VSIXSubPath>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <IncludeOutputGroupsInVSIX>TemplateProjectOutputGroup%3b</IncludeOutputGroupsInVSIX>
     </ProjectReference>
     <ProjectReference Include="..\MelonLoader.ModTemplate\MelonLoader.ModTemplate.csproj">
       <Project>{D7920CFA-47EF-4A62-86C1-7FF02737B0CD}</Project>

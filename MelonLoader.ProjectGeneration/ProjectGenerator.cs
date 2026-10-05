@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace MelonLoader.ProjectGeneration
 {
-    public sealed class ProjectGenerator
+    public sealed partial class ProjectGenerator
     {
         public Dictionary<string, string> CreateReplacements(GameInfo game, string author,
             IEnumerable<AssemblyReference> references = null, bool includeRequiredReferences = true, bool deployOnBuild = true, bool copyAssemblies = false)
