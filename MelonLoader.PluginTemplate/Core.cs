@@ -6,13 +6,8 @@ namespace $safeprojectname$;
 
 public class Core : MelonPlugin
 {
-    public override void OnPreInitialization()
-    {
-        LoggerInstance.Msg("Pre-initialization.");
-    }
-
     public override void $INIT_METHOD_NAME$()
     {
-        LoggerInstance.Msg("Initialized.");
+        
     }
 }

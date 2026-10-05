@@ -6,8 +6,5 @@ namespace $safeprojectname$;
 
 public class Core : MelonMod
 {
-    public override void OnInitializeMelon()
-    {
-        LoggerInstance.Msg("Initialized.");
-    }
+
 }

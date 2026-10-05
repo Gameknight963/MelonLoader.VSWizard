@@ -8,6 +8,6 @@ public class Core : MelonMod
 {
     public override void $INIT_METHOD_NAME$()
     {
-        LoggerInstance.Msg("Initialized.");
+        
     }
 }
