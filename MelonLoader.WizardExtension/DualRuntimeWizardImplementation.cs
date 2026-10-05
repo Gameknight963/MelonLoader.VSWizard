@@ -14,13 +14,25 @@ namespace MelonLoader.WizardExtension
     {
         public void RunStarted(object automationObject, Dictionary<string, string> replacementsDictionary, WizardRunKind runKind, object[] customParams)
         {
-            GameInfo mono = SelectGame(false);
-            GameInfo il2Cpp = SelectGame(true);
-            ProjectGenerator generator = new();
-            Dictionary<string, string> replacements = generator.CreateDualRuntimeReplacements(
-                new RuntimeTargetOptions { Game = mono }, new RuntimeTargetOptions { Game = il2Cpp }, Environment.UserName);
-            foreach (KeyValuePair<string, string> replacement in replacements)
-                replacementsDictionary.Add(replacement.Key, replacement.Value);
+            try
+            {
+                GameInfo mono = SelectGame(false);
+                GameInfo il2Cpp = SelectGame(true);
+                ProjectGenerator generator = new();
+                Dictionary<string, string> replacements = generator.CreateDualRuntimeReplacements(
+                    new RuntimeTargetOptions { Game = mono }, new RuntimeTargetOptions { Game = il2Cpp }, Environment.UserName);
+                foreach (KeyValuePair<string, string> replacement in replacements)
+                    replacementsDictionary.Add(replacement.Key, replacement.Value);
+            }
+            catch (WizardBackoutException)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(exception.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new WizardBackoutException();
+            }
         }
 
         private static GameInfo SelectGame(bool il2Cpp)
@@ -31,26 +43,17 @@ namespace MelonLoader.WizardExtension
                 Multiselect = false,
                 Filter = "Unity Executables (*.exe)|*.exe"
             };
-            while (true)
-            {
-                if (dialog.ShowDialog() != DialogResult.OK) throw new WizardBackoutException();
-                try
-                {
-                    GameInspector inspector = new();
-                    GameInfo game = inspector.Inspect(dialog.FileName);
-                    if (game.IsIl2Cpp != il2Cpp)
-                        throw new InvalidOperationException("Select a " + (il2Cpp ? "IL2CPP" : "Mono") + " installation for this target.");
-                    // Validate references before accepting the selection so the user can retry.
-                    ProjectGenerator generator = new();
-                    generator.CreateReplacements(game, Environment.UserName);
-                    return game;
-                }
-                catch (Exception exception)
-                {
-                    if (MessageBox.Show(exception.Message, "Error", MessageBoxButton.OKCancel) == MessageBoxResult.Cancel)
-                        throw new WizardBackoutException();
-                }
-            }
+            if (dialog.ShowDialog() != DialogResult.OK)
+                throw new WizardBackoutException();
+
+            GameInspector inspector = new();
+            GameInfo game = inspector.Inspect(dialog.FileName);
+            if (game.IsIl2Cpp != il2Cpp)
+                throw new InvalidOperationException("Select a " + (il2Cpp ? "IL2CPP" : "Mono") + " installation for this target.");
+            // Validate this target before asking for the next installation.
+            ProjectGenerator generator = new();
+            generator.CreateReplacements(game, Environment.UserName);
+            return game;
         }
 
         public void ProjectFinishedGenerating(Project project)

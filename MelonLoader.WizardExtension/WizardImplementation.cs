@@ -20,25 +20,21 @@ namespace MelonLoader.WizardExtension
                 Filter = "Unity Executables (*.exe)|*.exe"
             };
 
-            while (true)
-            {
-                if (dialog.ShowDialog() != DialogResult.OK)
-                    throw new WizardBackoutException();
+            if (dialog.ShowDialog() != DialogResult.OK)
+                throw new WizardBackoutException();
 
-                try
-                {
-                    GameInspector inspector = new();
-                    GameInfo game = inspector.Inspect(dialog.FileName);
-                    ProjectGenerator generator = new();
-                    foreach (KeyValuePair<string, string> replacement in generator.CreateReplacements(game, Environment.UserName))
-                        replacementsDictionary.Add(replacement.Key, replacement.Value);
-                    return;
-                }
-                catch (Exception exception)
-                {
-                    if (MessageBox.Show(exception.Message, "Error", MessageBoxButton.OKCancel) == MessageBoxResult.Cancel)
-                        throw new WizardBackoutException();
-                }
+            try
+            {
+                GameInspector inspector = new();
+                GameInfo game = inspector.Inspect(dialog.FileName);
+                ProjectGenerator generator = new();
+                foreach (KeyValuePair<string, string> replacement in generator.CreateReplacements(game, Environment.UserName))
+                    replacementsDictionary.Add(replacement.Key, replacement.Value);
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(exception.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new WizardBackoutException();
             }
         }
 
