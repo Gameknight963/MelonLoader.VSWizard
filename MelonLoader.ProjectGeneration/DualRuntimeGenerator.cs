@@ -8,7 +8,7 @@ namespace MelonLoader.ProjectGeneration
 {
     public sealed partial class ProjectGenerator
     {
-        public Dictionary<string, string> CreateDualRuntimeReplacements(RuntimeTargetOptions mono,
+        internal Dictionary<string, string> CreateDualRuntimeReplacements(RuntimeTargetOptions mono,
             RuntimeTargetOptions il2Cpp, string author, ProjectKind kind = ProjectKind.Mod,
             string projectName = null, string rootNamespace = null)
         {
@@ -45,7 +45,7 @@ namespace MelonLoader.ProjectGeneration
             return replacements;
         }
 
-        public ProjectGenerationResult GenerateDualRuntimePlan(DualRuntimeOptions options)
+        public ProjectGenerationResult Generate(DualRuntimeOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
             if (string.IsNullOrWhiteSpace(options.ProjectName) || options.ProjectName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)

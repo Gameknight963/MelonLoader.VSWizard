@@ -74,7 +74,7 @@ namespace MelonLoader.ProjectGeneration.Tests
                     Assert.Empty(generator.ResolveReferences(game, Array.Empty<AssemblyReference>(), includeRequiredReferences: false));
                     {
                         AssemblyReference unity = catalog.Single(reference => reference.Name == "UnityEngine.CoreModule");
-                        string selectedXml = generator.GenerateReferences(game, generator.GetFramework(game), new[] { unity });
+                        string selectedXml = new TemplateRenderer().CreateReplacements(game, "Me", new[] { unity })["$PROJ_REFERENCES$"];
                         Assert.Contains("UnityEngine.CoreModule", selectedXml);
                         Assert.DoesNotContain("Include=\"mscorlib\"", selectedXml);
                         Assert.Single(generator.ResolveReferences(game, new[] { unity, unity }, false));
@@ -85,7 +85,7 @@ namespace MelonLoader.ProjectGeneration.Tests
                             Author = "Author\"Name",
                             Kind = kind,
                             Game = game
-                        });
+                        }).Files;
                         XDocument project = XDocument.Parse(files["Example.csproj"]);
                         XDocument props = XDocument.Parse(files["Directory.Build.props"]);
                         Assert.Equal(gamePath, props.Root.Element("PropertyGroup").Element("GamePath").Value);
@@ -105,9 +105,9 @@ namespace MelonLoader.ProjectGeneration.Tests
                         string movedGame = Path.Combine(root, "Moved Game");
                         settings.Element("GamePath").Value = movedGame;
                         Dictionary<string, string> relocated = EvaluateProperties(props);
-                        Assert.Equal(Path.GetFullPath(Path.Combine(movedGame, ProjectGenerator.MakeRelativePath(gamePath, managed))),
+                        Assert.Equal(Path.GetFullPath(Path.Combine(movedGame, Path.GetRelativePath(gamePath, managed))),
                             Path.GetFullPath(relocated["GameAssembliesPath"]));
-                        Assert.Equal(Path.GetFullPath(Path.Combine(movedGame, ProjectGenerator.MakeRelativePath(gamePath, loader))),
+                        Assert.Equal(Path.GetFullPath(Path.Combine(movedGame, Path.GetRelativePath(gamePath, loader))),
                             Path.GetFullPath(relocated["LoaderAssembliesPath"]));
 
                         string customDirectory = Path.Combine(root, "Custom & Libraries");
@@ -123,7 +123,7 @@ namespace MelonLoader.ProjectGeneration.Tests
                             Game = game,
                             References = new[] { new AssemblyReference(customFile) },
                             DeployOnBuild = false
-                        });
+                        }).Files;
                         XDocument customProps = XDocument.Parse(custom["Directory.Build.props"]);
                         XElement customSettings = customProps.Root.Element("PropertyGroup");
                         Assert.Equal("false", customSettings.Element("DeployOnBuild").Value);
@@ -146,13 +146,13 @@ namespace MelonLoader.ProjectGeneration.Tests
                             Game = game,
                             Kind = kind,
                             References = Array.Empty<AssemblyReference>()
-                        });
+                        }).Files;
                         Assert.DoesNotContain("UnityEngine.CoreModule", minimal["Minimal.csproj"]);
                         Assert.Contains("Include=\"MelonLoader\"", minimal["Minimal.csproj"]);
                         File.Delete(Path.Combine(loader, "0Harmony.dll"));
                         IReadOnlyList<ReferenceDiagnostic> missing = generator.ValidateReferences(generator.ResolveReferences(game));
                         Assert.Contains(missing, diagnostic => diagnostic.Code == ReferenceDiagnosticCode.MissingFile && diagnostic.Reference.Name == "0Harmony");
-                        Assert.Throws<InvalidOperationException>(() => generator.GenerateReferences(game, generator.GetFramework(game)));
+                        Assert.Throws<InvalidOperationException>(() => new TemplateRenderer().CreateReplacements(game, "Me"));
                         foreach (string content in files.Values)
                         {
                             Assert.DoesNotContain("$safeprojectname$", content);

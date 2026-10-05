@@ -17,8 +17,8 @@ namespace MelonLoader.WizardExtension
             {
                 GameInfo mono = SelectGame(false);
                 GameInfo il2Cpp = SelectGame(true);
-                ProjectGenerator generator = new();
-                Dictionary<string, string> replacements = generator.CreateDualRuntimeReplacements(
+                TemplateRenderer renderer = new();
+                Dictionary<string, string> replacements = renderer.CreateDualRuntimeReplacements(
                     new RuntimeTargetOptions { Game = mono }, new RuntimeTargetOptions { Game = il2Cpp }, Environment.UserName,
                     projectName: replacementsDictionary["$projectname$"], rootNamespace: replacementsDictionary["$safeprojectname$"]);
                 foreach (KeyValuePair<string, string> replacement in replacements)
@@ -51,8 +51,8 @@ namespace MelonLoader.WizardExtension
             if (game.IsIl2Cpp != il2Cpp)
                 throw new InvalidOperationException("Select a " + (il2Cpp ? "IL2CPP" : "Mono") + " installation for this target.");
             // Validate this target before asking for the next installation.
-            ProjectGenerator generator = new();
-            generator.CreateReplacements(game, Environment.UserName);
+            TemplateRenderer renderer = new();
+            renderer.CreateReplacements(game, Environment.UserName);
             return game;
         }
 

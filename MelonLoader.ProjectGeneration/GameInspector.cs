@@ -8,7 +8,7 @@ namespace MelonLoader.ProjectGeneration
     {
         public GameInfo Inspect(string exe)
         {
-            GameInfo info = new();
+            GameInspectionData info = new();
 
             // likely won't occur, but may as well just in case
             if (string.IsNullOrWhiteSpace(exe))
@@ -19,7 +19,7 @@ namespace MelonLoader.ProjectGeneration
             exe = Path.GetFullPath(exe);
             string dir = Path.GetDirectoryName(exe);
 
-            info.Path = dir;
+            info.GameDirectory = dir;
 
             if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
             {
@@ -32,10 +32,10 @@ namespace MelonLoader.ProjectGeneration
                 throw new InvalidOperationException("Path does not contain a Data folder. It may not be a Unity game.");
             }
 
-            info.ExePath = exe;
-            info.DataPath = dataDir;
+            info.ExecutablePath = exe;
+            info.DataDirectory = dataDir;
 
-            info.IsIl2Cpp = File.Exists(Path.Combine(info.DataPath, "il2cpp_data", "Metadata", "global-metadata.dat"));
+            info.IsIl2Cpp = File.Exists(Path.Combine(info.DataDirectory, "il2cpp_data", "Metadata", "global-metadata.dat"));
 
             string loaderRoot = Path.Combine(dir, "MelonLoader");
             string melonPath = Path.Combine(loaderRoot, info.IsIl2Cpp ? "net6" : "net35", "MelonLoader.dll");
@@ -55,14 +55,14 @@ namespace MelonLoader.ProjectGeneration
                 throw new InvalidOperationException("Failed to read MelonLoader DLL. It may be corrupt.");
             }
 
-            info.MelonVersion = Version.Parse(fvi.FileVersion);
-            if (info.MelonVersion < new Version(0, 5, 0))
+            info.LoaderVersion = Version.Parse(fvi.FileVersion);
+            if (info.LoaderVersion < new Version(0, 5, 0))
             {
                 throw new InvalidOperationException("The installed MelonLoader version is too old. This wizard only supports MelonLoader 0.5+.");
             }
 
             UnityDataParser.Run(info);
-            return info;
+            return info.ToGameInfo();
         }
 
     }

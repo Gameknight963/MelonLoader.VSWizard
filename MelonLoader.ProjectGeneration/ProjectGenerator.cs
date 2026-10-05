@@ -9,7 +9,7 @@ namespace MelonLoader.ProjectGeneration
 {
     public sealed partial class ProjectGenerator
     {
-        public Dictionary<string, string> CreateReplacements(GameInfo game, string author,
+        internal Dictionary<string, string> CreateReplacements(GameInfo game, string author,
             IEnumerable<AssemblyReference> references = null, bool includeRequiredReferences = true, bool deployOnBuild = true, bool copyAssemblies = false)
         {
             if (game == null) throw new ArgumentNullException(nameof(game));
@@ -20,7 +20,7 @@ namespace MelonLoader.ProjectGeneration
             Dictionary<string, string> directories = GetReferenceDirectories(game, resolved);
             return new Dictionary<string, string>
             {
-                ["$GAME_DIR$"] = SecurityElement.Escape(game.Path),
+                ["$GAME_DIR$"] = SecurityElement.Escape(game.GameDirectory),
                 ["$GAME_DEV$"] = CSharpLiteral(game.GameDeveloper),
                 ["$GAME_NAME$"] = CSharpLiteral(game.GameName),
                 ["$FRAMEWORK_VER$"] = framework,
@@ -28,16 +28,13 @@ namespace MelonLoader.ProjectGeneration
                 ["$PROJ_REFERENCES$"] = RenderReferences(resolved, directories, copyAssemblies),
                 ["$REFERENCE_PATHS$"] = RenderReferenceDirectories(game, directories, copyAssemblies),
                 ["$DEPLOY_ON_BUILD$"] = deployOnBuild ? "true" : "false",
-                ["$INIT_METHOD_NAME$"] = game.MelonVersion >= new Version(0, 5, 5) ? "OnInitializeMelon" : "OnApplicationStart",
+                ["$INIT_METHOD_NAME$"] = game.LoaderVersion >= new Version(0, 5, 5) ? "OnInitializeMelon" : "OnApplicationStart",
                 ["$IMPLICIT_USINGS$"] = framework == "35" ? "disable" : "enable"
             };
         }
 
-        // Returns file contents without writing files or depending on a host UI.
-        public IReadOnlyDictionary<string, string> Generate(ProjectOptions options) => GeneratePlan(options).Files;
-
         /// <summary>Generates text files and an optional assembly copy plan without writing to disk.</summary>
-        public ProjectGenerationResult GeneratePlan(ProjectOptions options)
+        public ProjectGenerationResult Generate(ProjectOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
             if (string.IsNullOrWhiteSpace(options.ProjectName))
@@ -80,20 +77,20 @@ namespace MelonLoader.ProjectGeneration
         private static string CSharpLiteral(string value) => value == null ? "null" : "\"" + EscapeCSharp(value) + "\"";
         private static string EscapeCSharp(string value) => value.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t");
 
-        public string GetFramework(GameInfo info)
+        private string GetFramework(GameInfo info)
         {
             if (info == null) throw new ArgumentNullException(nameof(info));
             string framework = "6.0";
-            if (!info.IsMelon6Plus && info.IsIl2Cpp)
+            if (!info.IsLoader6Plus && info.IsIl2Cpp)
                 framework = "472";
 
             if (!info.IsIl2Cpp)
             {
-                if (info.EngineVersion >= new AssetRipper.Primitives.UnityVersion(2021, 2, 0))
+                if (info.UnityVersion >= new UnityVersion(2021, 2, 0))
                     framework = "standard2.1";
-                else if (info.EngineVersion >= new AssetRipper.Primitives.UnityVersion(2018, 1, 0))
+                else if (info.UnityVersion >= new UnityVersion(2018, 1, 0))
                     framework = "472";
-                else if (info.EngineVersion >= new AssetRipper.Primitives.UnityVersion(2017, 1, 0))
+                else if (info.UnityVersion >= new UnityVersion(2017, 1, 0))
                     framework = "35"; // possible for it to be 472, but this is a safer bet
                 else
                     framework = "35";
@@ -109,10 +106,10 @@ namespace MelonLoader.ProjectGeneration
         private IReadOnlyList<AssemblyReference> DiscoverReferences(GameInfo info, string framework)
         {
             if (info == null) throw new ArgumentNullException(nameof(info));
-            string il2cppDllDir = info.IsMelon6Plus ? Path.Combine(info.Path, "MelonLoader", "Il2CppAssemblies") : Path.Combine(info.Path, "MelonLoader", "Managed");
-            string dllDir = info.IsIl2Cpp ? il2cppDllDir : Path.Combine(info.DataPath, "Managed");
+            string il2cppDllDir = info.IsLoader6Plus ? Path.Combine(info.GameDirectory, "MelonLoader", "Il2CppAssemblies") : Path.Combine(info.GameDirectory, "MelonLoader", "Managed");
+            string dllDir = info.IsIl2Cpp ? il2cppDllDir : Path.Combine(info.DataDirectory, "Managed");
 
-            if (info.IsIl2Cpp && (!Directory.Exists(il2cppDllDir) || !File.Exists(Path.Combine(info.Path, "MelonLoader", "Dependencies", "Il2CppAssemblyGenerator", "Config.cfg"))))
+            if (info.IsIl2Cpp && (!Directory.Exists(il2cppDllDir) || !File.Exists(Path.Combine(info.GameDirectory, "MelonLoader", "Dependencies", "Il2CppAssemblyGenerator", "Config.cfg"))))
             {
                 throw new InvalidOperationException("Game has no generated assemblies. Please run it once with MelonLoader installed before creating a project.");
             }
@@ -125,32 +122,32 @@ namespace MelonLoader.ProjectGeneration
                 references.Add(new AssemblyReference(path, category, isRecommended: category != AssemblyCategory.Framework));
             }
             List<string> files = new();
-            if (info.MelonVersion <= new Version(0, 5, 3))
-                files.Add(Path.Combine(info.Path, "MelonLoader", "MelonLoader.dll"));
-            else if (info.MelonVersion <= new Version(0, 5, 7))
+            if (info.LoaderVersion <= new Version(0, 5, 3))
+                files.Add(Path.Combine(info.GameDirectory, "MelonLoader", "MelonLoader.dll"));
+            else if (info.LoaderVersion <= new Version(0, 5, 7))
             {
-                files.Add(Path.Combine(info.Path, "MelonLoader", "MelonLoader.dll"));
-                files.Add(Path.Combine(info.Path, "MelonLoader", "0Harmony.dll"));
+                files.Add(Path.Combine(info.GameDirectory, "MelonLoader", "MelonLoader.dll"));
+                files.Add(Path.Combine(info.GameDirectory, "MelonLoader", "0Harmony.dll"));
             }
             else // ML 0.6+
             {
-                files.Add(Path.Combine(info.Path, "MelonLoader", info.IsIl2Cpp ? "net6" : "net35", "MelonLoader.dll"));
-                files.Add(Path.Combine(info.Path, "MelonLoader", info.IsIl2Cpp ? "net6" : "net35", "0Harmony.dll"));
+                files.Add(Path.Combine(info.GameDirectory, "MelonLoader", info.IsIl2Cpp ? "net6" : "net35", "MelonLoader.dll"));
+                files.Add(Path.Combine(info.GameDirectory, "MelonLoader", info.IsIl2Cpp ? "net6" : "net35", "0Harmony.dll"));
 
                 if (info.IsIl2Cpp)
                 {
-                    files.Add(Path.Combine(info.Path, "MelonLoader", "net6", "Il2CppInterop.Runtime.dll"));
-                    files.Add(Path.Combine(info.Path, "MelonLoader", "net6", "Il2CppInterop.Common.dll"));
+                    files.Add(Path.Combine(info.GameDirectory, "MelonLoader", "net6", "Il2CppInterop.Runtime.dll"));
+                    files.Add(Path.Combine(info.GameDirectory, "MelonLoader", "net6", "Il2CppInterop.Common.dll"));
                 }
             }
 
             // this doesn't seem to be needed on all net35 mods for some reason, but at least on LiS:BtS it was, and it didn't seem to affect others so may as well add it
             if (framework == "35")
             {
-                if (info.IsMelon6Plus)
-                    files.Add(Path.Combine(info.Path, "MelonLoader", "net35", "ValueTupleBridge.dll"));
+                if (info.IsLoader6Plus)
+                    files.Add(Path.Combine(info.GameDirectory, "MelonLoader", "net35", "ValueTupleBridge.dll"));
                 else
-                    files.Add(Path.Combine(info.Path, "MelonLoader", "ValueTupleBridge.dll"));
+                    files.Add(Path.Combine(info.GameDirectory, "MelonLoader", "ValueTupleBridge.dll"));
             }
 
             foreach (string file in files)
@@ -202,14 +199,6 @@ namespace MelonLoader.ProjectGeneration
             return diagnostics.AsReadOnly();
         }
 
-        public string GenerateReferences(GameInfo info, string framework,
-            IEnumerable<AssemblyReference> references = null, bool includeRequiredReferences = true)
-        {
-            IReadOnlyList<AssemblyReference> resolved = ResolveReferences(info, references, includeRequiredReferences, framework);
-            EnsureValidReferences(resolved);
-            return RenderReferences(resolved, GetReferenceDirectories(info, resolved));
-        }
-
         private void EnsureValidReferences(IReadOnlyList<AssemblyReference> references)
         {
             IReadOnlyList<ReferenceDiagnostic> diagnostics = ValidateReferences(references);
@@ -220,11 +209,11 @@ namespace MelonLoader.ProjectGeneration
         private static Dictionary<string, string> GetReferenceDirectories(GameInfo game, IReadOnlyList<AssemblyReference> references)
         {
             string gameDirectory = game.IsIl2Cpp
-                ? Path.Combine(game.Path, "MelonLoader", game.IsMelon6Plus ? "Il2CppAssemblies" : "Managed")
-                : Path.Combine(game.DataPath, "Managed");
-            string loaderDirectory = game.MelonVersion <= new Version(0, 5, 7)
-                ? Path.Combine(game.Path, "MelonLoader")
-                : Path.Combine(game.Path, "MelonLoader", game.IsIl2Cpp ? "net6" : "net35");
+                ? Path.Combine(game.GameDirectory, "MelonLoader", game.IsLoader6Plus ? "Il2CppAssemblies" : "Managed")
+                : Path.Combine(game.DataDirectory, "Managed");
+            string loaderDirectory = game.LoaderVersion <= new Version(0, 5, 7)
+                ? Path.Combine(game.GameDirectory, "MelonLoader")
+                : Path.Combine(game.GameDirectory, "MelonLoader", game.IsIl2Cpp ? "net6" : "net35");
             Dictionary<string, string> directories = new()
             {
                 ["GameAssembliesPath"] = Path.GetFullPath(gameDirectory),
@@ -245,7 +234,7 @@ namespace MelonLoader.ProjectGeneration
             StringBuilder builder = new();
             foreach (KeyValuePair<string, string> directory in directories)
             {
-                string relative = MakeRelativePath(game.Path, directory.Value);
+                string relative = MakeRelativePath(game.GameDirectory, directory.Value);
                 // Only factor out GamePath for directories within that installation.
                 string normalized = relative.Replace('\\', '/');
                 bool withinGame = !Path.IsPathRooted(relative) && normalized != ".." && !normalized.StartsWith("../", StringComparison.Ordinal);
@@ -296,7 +285,7 @@ namespace MelonLoader.ProjectGeneration
             return AssemblyCategory.Game;
         }
 
-        public static string MakeRelativePath(string fromPath, string toPath)
+        private static string MakeRelativePath(string fromPath, string toPath)
         {
             if (string.IsNullOrEmpty(fromPath)) throw new ArgumentNullException("fromPath");
             if (string.IsNullOrEmpty(toPath)) throw new ArgumentNullException("toPath");

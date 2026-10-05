@@ -6,7 +6,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Xml.Linq;
 using System.Text.RegularExpressions;
-using AssetRipper.Primitives;
 using Xunit;
 
 namespace MelonLoader.ProjectGeneration.Tests
@@ -39,7 +38,7 @@ namespace MelonLoader.ProjectGeneration.Tests
                     Mono = mono,
                     Il2Cpp = il2Cpp
                 };
-                ProjectGenerationResult result = generator.GenerateDualRuntimePlan(options);
+                ProjectGenerationResult result = generator.Generate(options);
                 string projectDirectory = Path.Combine(root, "project");
                 Directory.CreateDirectory(projectDirectory);
                 foreach (KeyValuePair<string, string> file in result.Files)
@@ -124,19 +123,18 @@ namespace MelonLoader
                 RuntimeTargetOptions il2Cpp = CreateTarget(root, true, false);
                 if (legacyMono)
                 {
-                    mono.Game.MelonVersion = new Version(0, 5, 0);
-                    mono.Game.GameName = "Mono Edition";
-                    File.Copy(Path.Combine(stubDirectory, "output", "MelonLoader.dll"), Path.Combine(mono.Game.Path, "MelonLoader", "MelonLoader.dll"), true);
+                    mono.Game = mono.Game with { LoaderVersion = new Version(0, 5, 0), GameName = "Mono Edition" };
+                    File.Copy(Path.Combine(stubDirectory, "output", "MelonLoader.dll"), Path.Combine(mono.Game.GameDirectory, "MelonLoader", "MelonLoader.dll"), true);
                 }
                 foreach (RuntimeTargetOptions target in new[] { mono, il2Cpp })
                 {
-                    string loaderPath = Path.Combine(target.Game.Path, "MelonLoader", target.Game.IsIl2Cpp ? "net6" : "net35", "MelonLoader.dll");
+                    string loaderPath = Path.Combine(target.Game.GameDirectory, "MelonLoader", target.Game.IsIl2Cpp ? "net6" : "net35", "MelonLoader.dll");
                     File.Copy(Path.Combine(stubDirectory, "output", "MelonLoader.dll"), loaderPath, true);
                     target.IncludeRequiredReferences = false;
                     target.References = new[] { new AssemblyReference(loaderPath) };
                 }
                 ProjectGenerator generator = new();
-                ProjectGenerationResult result = generator.GenerateDualRuntimePlan(new DualRuntimeOptions
+                ProjectGenerationResult result = generator.Generate(new DualRuntimeOptions
                 {
                     ProjectName = "Example",
                     RootNamespace = "Example",
@@ -172,13 +170,13 @@ namespace MelonLoader
             {
                 RuntimeTargetOptions mono = CreateTarget(root, false, false);
                 RuntimeTargetOptions il2Cpp = CreateTarget(root, true, false);
-                mono.Game.MelonVersion = new Version(0, 5, 0);
-                File.WriteAllText(Path.Combine(mono.Game.Path, "MelonLoader", "MelonLoader.dll"), "legacy fixture");
-                mono.Game.GameName = "Mono Edition";
-                il2Cpp.Game.GameName = "IL2CPP Edition";
+                mono.Game = mono.Game with { LoaderVersion = new Version(0, 5, 0) };
+                File.WriteAllText(Path.Combine(mono.Game.GameDirectory, "MelonLoader", "MelonLoader.dll"), "legacy fixture");
+                mono.Game = mono.Game with { GameName = "Mono Edition" };
+                il2Cpp.Game = il2Cpp.Game with { GameName = "IL2CPP Edition" };
                 mono.DeployOnBuild = true;
                 ProjectGenerator generator = new();
-                ProjectGenerationResult result = generator.GenerateDualRuntimePlan(new DualRuntimeOptions
+                ProjectGenerationResult result = generator.Generate(new DualRuntimeOptions
                 {
                     ProjectName = "Example",
                     RootNamespace = "Example",
@@ -212,7 +210,7 @@ namespace MelonLoader
             try
             {
                 ProjectGenerator generator = new();
-                Dictionary<string, string> replacements = generator.CreateDualRuntimeReplacements(
+                Dictionary<string, string> replacements = new TemplateRenderer().CreateDualRuntimeReplacements(
                     CreateTarget(root, false, false), CreateTarget(root, true, false), "Me",
                     projectName: "Display \"Name", rootNamespace: "SafeNamespace");
                 // Emulate the host's single substitution pass: inserted text isn't processed again.
@@ -233,7 +231,7 @@ namespace MelonLoader
         public void RejectsSwappedRuntimeSources()
         {
             ProjectGenerator generator = new();
-            Assert.Throws<ArgumentException>(() => generator.CreateDualRuntimeReplacements(
+            Assert.Throws<ArgumentException>(() => new TemplateRenderer().CreateDualRuntimeReplacements(
                 new RuntimeTargetOptions { Game = new GameInfo { IsIl2Cpp = true } },
                 new RuntimeTargetOptions { Game = new GameInfo { IsIl2Cpp = false } }, "Me"));
         }
@@ -259,11 +257,11 @@ namespace MelonLoader
             {
                 Game = new GameInfo
                 {
-                    Path = gamePath,
-                    DataPath = data,
+                    GameDirectory = gamePath,
+                    DataDirectory = data,
                     IsIl2Cpp = il2Cpp,
-                    MelonVersion = new Version(0, 6, 0),
-                    EngineVersion = new UnityVersion(2021, 2, 0)
+                    LoaderVersion = new Version(0, 6, 0),
+                    UnityVersion = new UnityVersion(2021, 2, 0)
                 },
                 CopyAssemblies = copy,
                 DeployOnBuild = false

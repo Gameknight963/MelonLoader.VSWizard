@@ -1,27 +1,21 @@
-﻿using AssetRipper.Primitives;
-using System;
+﻿using System;
 
 namespace MelonLoader.ProjectGeneration
 {
-    public class GameInfo
+    public sealed record GameInfo
     {
         private static readonly Version _ml6Version = new(0, 6, 0);
 
-        // Compat Check
-        public bool IsUnityGame { get; set; } = true;
-        public bool HasMelonInstalled { get; set; } = true;
-        public bool IsMelonValid { get; set; } = true;
-
         // Data
-        public string Path { get; set; } = "";
-        public string ExePath { get; set; } = "";
-        public string DataPath { get; set; } = "";
-        public Version MelonVersion { get; set; } = new();
-        public bool IsMelon6Plus { get => MelonVersion >= _ml6Version; }
-        public bool IsIl2Cpp { get; set; } = false;
+        public string GameDirectory { get; init; } = "";
+        public string ExecutablePath { get; init; } = "";
+        public string DataDirectory { get; init; } = "";
+        public Version LoaderVersion { get; init; } = new();
+        internal bool IsLoader6Plus { get => LoaderVersion >= _ml6Version; }
+        public bool IsIl2Cpp { get; init; } = false;
 
-        public string GameName { get; set; } = null;
-        public string GameDeveloper { get; set; } = null;
-        public UnityVersion EngineVersion { get; set; } = UnityVersion.MinVersion;
+        public string GameName { get; init; } = null;
+        public string GameDeveloper { get; init; } = null;
+        public UnityVersion UnityVersion { get; init; } = UnityVersion.Unknown;
     }
 }

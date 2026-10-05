@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using UnityVersion = AssetRipper.Primitives.UnityVersion;
 using System.Reflection;
 
 namespace MelonLoader.ProjectGeneration
@@ -15,7 +14,7 @@ namespace MelonLoader.ProjectGeneration
     // copied from MelonLoader
     internal static class UnityDataParser
     {
-        internal static void Run(GameInfo info)
+        internal static void Run(GameInspectionData info)
         {
             AssetsManager assetsManager = new();
             ReadGameInfo(assetsManager, info);
@@ -25,9 +24,9 @@ namespace MelonLoader.ProjectGeneration
                 || string.IsNullOrEmpty(info.GameName))
                 ReadGameInfoFallback(info);
 
-            if (info.EngineVersion == UnityVersion.MinVersion)
+            if (info.UnityVersion == UnityVersion.Unknown)
             {
-                try { info.EngineVersion = ReadVersionFallback(info); }
+                try { info.UnityVersion = ReadVersionFallback(info); }
                 catch { }
             }
 
@@ -37,18 +36,18 @@ namespace MelonLoader.ProjectGeneration
                 info.GameName = null;
         }
 
-        private static void ReadGameInfo(AssetsManager assetsManager, GameInfo info)
+        private static void ReadGameInfo(AssetsManager assetsManager, GameInspectionData info)
         {
             AssetsFileInstance instance = null;
             try
             {
-                string bundlePath = Path.Combine(info.DataPath, "globalgamemanagers");
+                string bundlePath = Path.Combine(info.DataDirectory, "globalgamemanagers");
                 if (!File.Exists(bundlePath))
-                    bundlePath = Path.Combine(info.DataPath, "mainData");
+                    bundlePath = Path.Combine(info.DataDirectory, "mainData");
 
                 if (!File.Exists(bundlePath))
                 {
-                    bundlePath = Path.Combine(info.DataPath, "data.unity3d");
+                    bundlePath = Path.Combine(info.DataDirectory, "data.unity3d");
                     if (!File.Exists(bundlePath))
                         return;
 
@@ -67,8 +66,8 @@ namespace MelonLoader.ProjectGeneration
                 if (!instance.file.Metadata.TypeTreeEnabled)
                     assetsManager.LoadClassDatabaseFromPackage(instance.file.Metadata.UnityVersion);
 
-                if (info.EngineVersion == UnityVersion.MinVersion)
-                    info.EngineVersion = UnityVersion.Parse(instance.file.Metadata.UnityVersion);
+                if (info.UnityVersion == UnityVersion.Unknown)
+                    info.UnityVersion = UnityVersion.Parse(instance.file.Metadata.UnityVersion);
 
                 List<AssetFileInfo> assetFiles = instance.file.GetAssetsOfType(AssetClassID.PlayerSettings);
                 if (assetFiles.Count > 0)
@@ -94,11 +93,11 @@ namespace MelonLoader.ProjectGeneration
             instance?.file.Close();
         }
 
-        private static void ReadGameInfoFallback(GameInfo info)
+        private static void ReadGameInfoFallback(GameInspectionData info)
         {
             try
             {
-                string appInfoFilePath = Path.Combine(info.DataPath, "app.info");
+                string appInfoFilePath = Path.Combine(info.DataDirectory, "app.info");
                 if (!File.Exists(appInfoFilePath))
                     return;
 
@@ -116,9 +115,9 @@ namespace MelonLoader.ProjectGeneration
             catch { }
         }
 
-        private static UnityVersion ReadVersionFallback(GameInfo info)
+        private static UnityVersion ReadVersionFallback(GameInspectionData info)
         {
-            string unityPlayerPath = info.ExePath;
+            string unityPlayerPath = info.ExecutablePath;
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
             {
                 FileVersionInfo unityVer = FileVersionInfo.GetVersionInfo(unityPlayerPath);
@@ -127,7 +126,7 @@ namespace MelonLoader.ProjectGeneration
 
             try
             {
-                string globalgamemanagersPath = Path.Combine(info.DataPath, "globalgamemanagers");
+                string globalgamemanagersPath = Path.Combine(info.DataDirectory, "globalgamemanagers");
                 if (File.Exists(globalgamemanagersPath))
                     return GetVersionFromGlobalGameManagers(File.ReadAllBytes(globalgamemanagersPath));
             }
@@ -135,7 +134,7 @@ namespace MelonLoader.ProjectGeneration
 
             try
             {
-                string dataPath = Path.Combine(info.DataPath, "data.unity3d");
+                string dataPath = Path.Combine(info.DataDirectory, "data.unity3d");
                 if (File.Exists(dataPath))
                     return GetVersionFromDataUnity3D(File.OpenRead(dataPath));
             }

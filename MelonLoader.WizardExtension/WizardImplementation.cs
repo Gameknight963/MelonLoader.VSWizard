@@ -27,8 +27,8 @@ namespace MelonLoader.WizardExtension
             {
                 GameInspector inspector = new();
                 GameInfo game = inspector.Inspect(dialog.FileName);
-                ProjectGenerator generator = new();
-                foreach (KeyValuePair<string, string> replacement in generator.CreateReplacements(game, Environment.UserName))
+                TemplateRenderer renderer = new();
+                foreach (KeyValuePair<string, string> replacement in renderer.CreateReplacements(game, Environment.UserName))
                     replacementsDictionary.Add(replacement.Key, replacement.Value);
             }
             catch (Exception exception)

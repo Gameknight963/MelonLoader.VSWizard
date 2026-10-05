@@ -41,10 +41,10 @@ namespace MelonLoader.ProjectGeneration.Tests
                 }
                 GameInfo game = new()
                 {
-                    Path = source,
-                    DataPath = Path.Combine(source, "Game_Data"),
+                    GameDirectory = source,
+                    DataDirectory = Path.Combine(source, "Game_Data"),
                     IsIl2Cpp = il2Cpp,
-                    MelonVersion = new Version(0, 6, 0)
+                    LoaderVersion = new Version(0, 6, 0)
                 };
                 ProjectGenerator generator = new();
                 ProjectOptions options = new()
@@ -62,7 +62,7 @@ namespace MelonLoader.ProjectGeneration.Tests
                         new AssemblyReference(custom)
                     }
                 };
-                ProjectGenerationResult result = generator.GeneratePlan(options);
+                ProjectGenerationResult result = generator.Generate(options);
                 Assert.False(Directory.Exists(output));
                 Assert.Single(result.Warnings);
                 Assert.DoesNotContain(result.AssemblyCopies, copy => copy.SourcePath.EndsWith("Unused.dll"));

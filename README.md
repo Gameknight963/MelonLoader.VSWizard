@@ -56,10 +56,13 @@ ProjectOptions options = new()
     Kind = ProjectKind.Mod,
     Game = game
 };
-IReadOnlyDictionary<string, string> files = generator.Generate(options);
+ProjectGenerationResult result = generator.Generate(options);
+IReadOnlyDictionary<string, string> files = result.Files;
 ```
 
-`files` contains relative filenames and their complete contents. The caller controls previewing and writing them. Use a valid C# namespace and a project name suitable for a filename. `Inspect` reads the installation and throws exceptions for invalid inputs; it never displays UI. `CreateReplacements` is available for hosts using token-based templates. Game inspection still requires MelonLoader to be installed and, for IL2CPP, its assemblies to have been generated.
+`files` contains relative filenames and their complete contents. The caller controls previewing and writing them. Use a valid C# namespace and a project name suitable for a filename. `Inspect` reads the installation and throws exceptions for invalid inputs; it never displays UI. `TemplateRenderer.CreateReplacements` and `TemplateRenderer.CreateDualRuntimeReplacements` are available for hosts using token-based templates. Game inspection still requires MelonLoader to be installed and, for IL2CPP, its assemblies to have been generated.
+
+`GameInfo` is an immutable record. Inspection populates `GameDirectory`, `ExecutablePath`, `DataDirectory`, `LoaderVersion`, `UnityVersion`, `IsIl2Cpp`, and game metadata. Custom integrations can construct it with an object initializer or create a modified copy with `with`. `UnityVersion` belongs to this library; callers do not need to use AssetRipper types. It supports parsing Unity version strings, comparisons, and `Major`, `Minor`, and `Patch` properties. `UnityVersion.Unknown` represents unavailable version metadata.
 
 Build the library independently with `dotnet build MelonLoader.ProjectGeneration`. Building the VSIX also requires Visual Studio SDK build tooling and the repository's strong-name key (`MelonLoader.WizardExtension/key.snk`).
 
@@ -74,7 +77,7 @@ IReadOnlyList<AssemblyReference> selected = selectedByYourUi;
 IReadOnlyList<AssemblyReference> resolved = generator.ResolveReferences(game, selected);
 IReadOnlyList<ReferenceDiagnostic> diagnostics = generator.ValidateReferences(resolved);
 options.References = selected;
-IReadOnlyDictionary<string, string> output = generator.Generate(options);
+ProjectGenerationResult output = generator.Generate(options);
 ```
 
 Each reference exposes `Name`, absolute `Path`, `Category`, `Exists`, `IsRequired`, and `IsRecommended`. Framework DLLs are visible but excluded from the default recommendations. Loader support references are included automatically. A null selection preserves the automatic defaults; an empty selection includes only required support references. Advanced callers can set `IncludeRequiredReferences = false` to manage every reference themselves. Custom DLLs can be supplied with `new AssemblyReference(path)`.
@@ -111,7 +114,7 @@ Moving an installation only requires editing `GamePath`. Each assembly directory
 ```csharp
 options.CopyAssemblies = true;
 options.DeployOnBuild = false;
-ProjectGenerationResult result = generator.GeneratePlan(options);
+ProjectGenerationResult result = generator.Generate(options);
 
 // Your UI can preview result.Files, result.AssemblyCopies, and result.Warnings.
 // Write result.Files to the project directory, then explicitly execute the copy plan:
@@ -122,7 +125,7 @@ Generation never writes files. `AssemblyCopies` records each absolute source pat
 
 Generated assembly properties point to `$(MSBuildThisFileDirectory)references/Mono/...` or `references/IL2CPP/...`, with separate game, loader, and additional reference folders. Compiler references have `Private=false`, so these DLLs are not automatically copied into build output. The snapshot can move with the project and compilation no longer requires the game installation. Deployment remains independent and still requires `GamePath` when enabled.
 
-`Generate(options)` API returns text files only. When copying is enabled, use `GeneratePlan` to get the matching copy operations too.
+`Generate` returns a `ProjectGenerationResult` containing `Files`, `AssemblyCopies`, and `Warnings`. It has overloads for `ProjectOptions` and `DualRuntimeOptions`; both generate without writing files.
 
 ### Mono and IL2CPP projects
 
@@ -151,7 +154,7 @@ DualRuntimeOptions options = new()
         DeployOnBuild = false
     }
 };
-ProjectGenerationResult result = generator.GenerateDualRuntimePlan(options);
+ProjectGenerationResult result = generator.Generate(options);
 ```
 
 Each runtime independently chooses its framework, references, copied snapshot, and deployment destination. `Directory.Build.props` keeps those paths in conditional groups. Supporting different game APIs in your own code remains your responsibility. 
