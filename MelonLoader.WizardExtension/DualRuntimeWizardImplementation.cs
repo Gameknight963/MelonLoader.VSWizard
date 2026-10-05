@@ -1,5 +1,4 @@
 using EnvDTE;
-using EnvDTE80;
 using Microsoft.VisualStudio.TemplateWizard;
 using MelonLoader.ProjectGeneration;
 using System;
@@ -61,25 +60,23 @@ namespace MelonLoader.WizardExtension
         {
             // Preserve an existing solution; add runtime configurations and map this project's contexts.
             SolutionConfigurations configurations = project.DTE.Solution.SolutionBuild.SolutionConfigurations;
-            foreach (string runtime in new[] { "Mono", "Il2Cpp" })
+            string[] configurationNames = { "Mono-Debug", "Mono-Release", "Il2Cpp-Debug", "Il2Cpp-Release" };
+            foreach (string name in configurationNames)
             {
                 bool exists = false;
                 foreach (SolutionConfiguration configuration in configurations)
-                    if (configuration.Name == runtime) exists = true;
-                if (!exists) configurations.Add(runtime, "", false);
+                    if (configuration.Name == name) exists = true;
+                if (!exists) configurations.Add(name, "", false);
             }
             foreach (SolutionConfiguration configuration in configurations)
             {
-                if (configuration.Name != "Mono" && configuration.Name != "Il2Cpp") continue;
-                SolutionConfiguration2 platformConfiguration = configuration as SolutionConfiguration2;
-                string platform = platformConfiguration?.PlatformName;
-                if (platform != "Debug" && platform != "Release") continue;
+                if (Array.IndexOf(configurationNames, configuration.Name) < 0) continue;
                 foreach (SolutionContext context in configuration.SolutionContexts)
                 {
                     if (string.Equals(context.ProjectName, project.UniqueName, StringComparison.OrdinalIgnoreCase))
-                        context.ConfigurationName = configuration.Name + "|" + platform;
+                        context.ConfigurationName = configuration.Name + "|Any CPU";
                 }
-                if (configuration.Name == "Mono" && platform == "Debug") configuration.Activate();
+                if (configuration.Name == "Mono-Debug") configuration.Activate();
             }
         }
 

@@ -112,7 +112,7 @@ The original `Generate(options)` API still returns text files only; when copying
 
 ### Mono and IL2CPP projects
 
-The **MelonLoader Mod (Mono and IL2CPP)** Visual Studio template asks for one Mono installation and one IL2CPP installation. These can be different editions of one game or different games used as development targets. Both need valid references. The generated project has configurations `Mono` and `Il2Cpp`, platforms `Debug` and `Release`, and CPU target `AnyCPU`. It includes a standalone `.slnx` with exactly the four runtime/build combinations; open that solution when working outside an existing solution.
+The **MelonLoader Mod (Mono and IL2CPP)** Visual Studio template asks for one Mono installation and one IL2CPP installation. These can be different editions of one game or different games used as development targets. Both need valid references. The generated project has configurations `Mono-Debug`, `Mono-Release`, `Il2Cpp-Debug`, and `Il2Cpp-Release`, with platform and CPU target `AnyCPU`. It includes a standalone `.slnx` with exactly the four runtime/build combinations; open that solution when working outside an existing solution.
 
 Your own tool can generate the same project without Visual Studio:
 
@@ -140,11 +140,11 @@ DualRuntimeOptions options = new()
 ProjectGenerationResult result = generator.GenerateDualRuntimePlan(options);
 ```
 
-Each runtime independently chooses its framework, references, copied snapshot, and deployment destination. `Directory.Build.props` keeps those paths in conditional groups. The runtime defines `MONO` or `IL2CPP`; the build platform selects optimization, debug information, and `DEBUG`/`TRACE`. Output and intermediate directories are separated by both dimensions to avoid sharing compiler/restore artifacts between targets. The generated entry class uses the appropriate game attributes and initialization override for each runtime. Supporting different game APIs in your own code remains your responsibility. The library also supports dual-runtime plugins through `Kind = ProjectKind.Plugin`.
+Each runtime independently chooses its framework, references, copied snapshot, and deployment destination. `Directory.Build.props` keeps those paths in conditional groups. The runtime defines `MONO` or `IL2CPP`; the Debug/Release portion of the configuration selects optimization, debug information, and `DEBUG`/`TRACE`. Output and intermediate directories are separated by configuration and platform to avoid sharing compiler/restore artifacts between targets. The generated entry class uses the appropriate game attributes and initialization override for each runtime. Supporting different game APIs in your own code remains your responsibility. The library also supports dual-runtime plugins through `Kind = ProjectKind.Plugin`.
 
 ```powershell
-dotnet build MyMod.slnx -c Mono -p:Platform=Debug
-dotnet build MyMod.slnx -c Il2Cpp -p:Platform=Release
+dotnet build MyMod.slnx -c Mono-Debug
+dotnet build MyMod.slnx -c Il2Cpp-Release
 ```
 
 Tests evaluate all four combinations with installation and copied references, then compile all four against a minimal loader API fixture. Those fixtures verify generation and build mechanics, not actual in-game compatibility.

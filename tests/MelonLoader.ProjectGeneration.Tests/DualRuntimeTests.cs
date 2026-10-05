@@ -22,7 +22,7 @@ namespace MelonLoader.ProjectGeneration.Tests
         [InlineData("Mono", "Release", true)]
         [InlineData("Il2Cpp", "Debug", true)]
         [InlineData("Il2Cpp", "Release", true)]
-        public void EvaluatesRuntimeAndBuildSettings(string runtime, string platform, bool copy)
+        public void EvaluatesRuntimeAndBuildSettings(string runtime, string mode, bool copy)
         {
             string root = Path.Combine(Path.GetTempPath(), "MelonDual-" + Guid.NewGuid());
             Directory.CreateDirectory(root);
@@ -55,9 +55,9 @@ namespace MelonLoader.ProjectGeneration.Tests
                     Directory.Delete(Path.Combine(root, "mono"), true);
                     Directory.Delete(Path.Combine(root, "il2cpp"), true);
                 }
-                string json = RunDotnet(projectDirectory, "msbuild", "Example.csproj", "-nologo", "-p:Configuration=" + runtime,
-                    "-p:Platform=" + platform,
-                    "-getProperty:TargetFramework,DefineConstants,Optimize,DebugType,PlatformTarget,GamePath,DeployOnBuild,MSBuildProjectExtensionsPath,OutputPath",
+                string json = RunDotnet(projectDirectory, "msbuild", "Example.csproj", "-nologo", "-p:Configuration=" + runtime + "-" + mode,
+                    "-p:Platform=AnyCPU",
+                    "-getProperty:TargetFramework,DefineConstants,Optimize,DebugType,Platform,PlatformTarget,GamePath,DeployOnBuild,MSBuildProjectExtensionsPath,OutputPath",
                     "-getItem:Reference");
                 using JsonDocument evaluated = JsonDocument.Parse(json);
                 JsonElement properties = evaluated.RootElement.GetProperty("Properties");
@@ -65,14 +65,15 @@ namespace MelonLoader.ProjectGeneration.Tests
                 string[] symbols = properties.GetProperty("DefineConstants").GetString().Split(';');
                 Assert.Contains(runtime == "Mono" ? "MONO" : "IL2CPP", symbols);
                 Assert.DoesNotContain(runtime == "Mono" ? "IL2CPP" : "MONO", symbols);
-                Assert.Equal(platform == "Debug", symbols.Contains("DEBUG"));
+                Assert.Equal(mode == "Debug", symbols.Contains("DEBUG"));
                 Assert.Contains("TRACE", symbols);
-                Assert.Equal(platform == "Release" ? "true" : "false", properties.GetProperty("Optimize").GetString());
+                Assert.Equal(mode == "Release" ? "true" : "false", properties.GetProperty("Optimize").GetString());
                 Assert.Equal("portable", properties.GetProperty("DebugType").GetString());
                 Assert.Equal("AnyCPU", properties.GetProperty("PlatformTarget").GetString());
+                Assert.Equal("AnyCPU", properties.GetProperty("Platform").GetString());
                 Assert.Equal("false", properties.GetProperty("DeployOnBuild").GetString());
                 Assert.Contains(runtime, properties.GetProperty("MSBuildProjectExtensionsPath").GetString());
-                Assert.Contains(platform, properties.GetProperty("MSBuildProjectExtensionsPath").GetString());
+                Assert.Contains(mode, properties.GetProperty("MSBuildProjectExtensionsPath").GetString());
                 List<string> names = new();
                 foreach (JsonElement reference in evaluated.RootElement.GetProperty("Items").GetProperty("Reference").EnumerateArray())
                 {
@@ -138,11 +139,11 @@ namespace MelonLoader
                     File.WriteAllText(Path.Combine(projectDirectory, file.Key), file.Value);
                 foreach (string runtime in new[] { "Mono", "Il2Cpp" })
                 {
-                    foreach (string platform in new[] { "Debug", "Release" })
+                    foreach (string mode in new[] { "Debug", "Release" })
                     {
-                        RunDotnet(projectDirectory, "build", "Example.slnx", "-c", runtime, "-p:Platform=" + platform, "--nologo");
+                        RunDotnet(projectDirectory, "build", "Example.slnx", "-c", runtime + "-" + mode, "--nologo");
                         string framework = runtime == "Mono" ? "netstandard2.1" : "net6.0";
-                        Assert.True(File.Exists(Path.Combine(projectDirectory, "bin", runtime, platform, framework, "Example.dll")));
+                        Assert.True(File.Exists(Path.Combine(projectDirectory, "bin", runtime + "-" + mode, "AnyCPU", framework, "Example.dll")));
                     }
                 }
             }

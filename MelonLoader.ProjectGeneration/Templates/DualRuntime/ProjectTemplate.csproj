@@ -1,13 +1,13 @@
 <Project>
   <PropertyGroup>
-    <Configuration Condition="'$(Configuration)' == ''">Mono</Configuration>
-    <Platform Condition="'$(Platform)' == ''">Debug</Platform>
+    <Configuration Condition="'$(Configuration)' == ''">Mono-Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">AnyCPU</Platform>
     <BaseIntermediateOutputPath>obj/$(Configuration)/$(Platform)/</BaseIntermediateOutputPath>
   </PropertyGroup>
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <PropertyGroup>
-    <Configurations>Mono;Il2Cpp</Configurations>
-    <Platforms>Debug;Release</Platforms>
+    <Configurations>Mono-Debug;Mono-Release;Il2Cpp-Debug;Il2Cpp-Release</Configurations>
+    <Platforms>AnyCPU</Platforms>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <RootNamespace>$safeprojectname$</RootNamespace>
     <AssemblyName>$safeprojectname$</AssemblyName>
@@ -20,32 +20,32 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <OutputPath>bin/$(Configuration)/$(Platform)/</OutputPath>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)' == 'Mono'">
+  <PropertyGroup Condition="'$(Configuration)' == 'Mono-Debug' Or '$(Configuration)' == 'Mono-Release'">
     <TargetFramework>net$MONO_FRAMEWORK_VER$</TargetFramework>
     <ImplicitUsings>$MONO_IMPLICIT_USINGS$</ImplicitUsings>
     <DefineConstants>$(DefineConstants);MONO</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)' == 'Il2Cpp'">
+  <PropertyGroup Condition="'$(Configuration)' == 'Il2Cpp-Debug' Or '$(Configuration)' == 'Il2Cpp-Release'">
     <TargetFramework>net$IL2CPP_FRAMEWORK_VER$</TargetFramework>
     <ImplicitUsings>$IL2CPP_IMPLICIT_USINGS$</ImplicitUsings>
     <DefineConstants>$(DefineConstants);IL2CPP</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Platform)' == 'Debug'">
+  <PropertyGroup Condition="'$(Configuration)' == 'Mono-Debug' Or '$(Configuration)' == 'Il2Cpp-Debug'">
     <Optimize>false</Optimize>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>portable</DebugType>
     <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Platform)' == 'Release'">
+  <PropertyGroup Condition="'$(Configuration)' == 'Mono-Release' Or '$(Configuration)' == 'Il2Cpp-Release'">
     <Optimize>true</Optimize>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>portable</DebugType>
     <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
   </PropertyGroup>
-  <ItemGroup Condition="'$(Configuration)' == 'Mono'">
+  <ItemGroup Condition="'$(Configuration)' == 'Mono-Debug' Or '$(Configuration)' == 'Mono-Release'">
 $MONO_PROJ_REFERENCES$
   </ItemGroup>
-  <ItemGroup Condition="'$(Configuration)' == 'Il2Cpp'">
+  <ItemGroup Condition="'$(Configuration)' == 'Il2Cpp-Debug' Or '$(Configuration)' == 'Il2Cpp-Release'">
 $IL2CPP_PROJ_REFERENCES$
   </ItemGroup>
   <ItemGroup>
@@ -53,10 +53,8 @@ $IL2CPP_PROJ_REFERENCES$
     <Content Include="Directory.Build.props" />
   </ItemGroup>
   <Target Name="ValidateRuntimeConfiguration" BeforeTargets="PrepareForBuild">
-    <Error Condition="'$(Configuration)' != 'Mono' And '$(Configuration)' != 'Il2Cpp'"
-           Text="Choose the Mono or Il2Cpp configuration." />
-    <Error Condition="'$(Platform)' != 'Debug' And '$(Platform)' != 'Release'"
-           Text="Choose the Debug or Release platform. CPU target remains AnyCPU." />
+    <Error Condition="'$(Configuration)' != 'Mono-Debug' And '$(Configuration)' != 'Mono-Release' And '$(Configuration)' != 'Il2Cpp-Debug' And '$(Configuration)' != 'Il2Cpp-Release'"
+           Text="Choose Mono-Debug, Mono-Release, Il2Cpp-Debug, or Il2Cpp-Release." />
   </Target>
   <Target Name="DeployOutput" AfterTargets="Build" Condition="'$(DeployOnBuild)' == 'true'">
     <Error Condition="'$(GamePath)' == '' Or !Exists('$(GamePath)')"

@@ -1,14 +1,16 @@
 <Solution>
   <Configurations>
-    <BuildType Name="Mono" />
-    <BuildType Name="Il2Cpp" />
-    <Platform Name="Debug" />
-    <Platform Name="Release" />
+    <BuildType Name="Mono-Debug" />
+    <BuildType Name="Mono-Release" />
+    <BuildType Name="Il2Cpp-Debug" />
+    <BuildType Name="Il2Cpp-Release" />
+    <Platform Name="Any CPU" />
   </Configurations>
   <Project Path="$safeprojectname$.csproj">
-    <BuildType Solution="Mono|*" Project="Mono" />
-    <BuildType Solution="Il2Cpp|*" Project="Il2Cpp" />
-    <Platform Solution="*|Debug" Project="Debug" />
-    <Platform Solution="*|Release" Project="Release" />
+    <BuildType Solution="Mono-Debug|*" Project="Mono-Debug" />
+    <BuildType Solution="Mono-Release|*" Project="Mono-Release" />
+    <BuildType Solution="Il2Cpp-Debug|*" Project="Il2Cpp-Debug" />
+    <BuildType Solution="Il2Cpp-Release|*" Project="Il2Cpp-Release" />
+    <Platform Solution="*|Any CPU" Project="AnyCPU" />
   </Project>
 </Solution>

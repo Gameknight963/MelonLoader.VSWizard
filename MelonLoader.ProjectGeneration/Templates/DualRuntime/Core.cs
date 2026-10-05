@@ -5,5 +5,5 @@ $MONO_CORE$
 #elif IL2CPP
 $IL2CPP_CORE$
 #else
-#error Select the Mono or Il2Cpp configuration.
+#error Select a Mono or Il2Cpp build configuration.
 #endif

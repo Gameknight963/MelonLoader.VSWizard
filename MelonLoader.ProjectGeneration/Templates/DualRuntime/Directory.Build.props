@@ -1,10 +1,10 @@
 <Project>
-  <PropertyGroup Condition="'$(Configuration)' == 'Mono'">
+  <PropertyGroup Condition="'$(Configuration)' == 'Mono-Debug' Or '$(Configuration)' == 'Mono-Release'">
     <GamePath>$MONO_GAME_DIR$</GamePath>
 $MONO_REFERENCE_PATHS$
     <DeployOnBuild>$MONO_DEPLOY_ON_BUILD$</DeployOnBuild>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)' == 'Il2Cpp'">
+  <PropertyGroup Condition="'$(Configuration)' == 'Il2Cpp-Debug' Or '$(Configuration)' == 'Il2Cpp-Release'">
     <GamePath>$IL2CPP_GAME_DIR$</GamePath>
 $IL2CPP_REFERENCE_PATHS$
     <DeployOnBuild>$IL2CPP_DEPLOY_ON_BUILD$</DeployOnBuild>
