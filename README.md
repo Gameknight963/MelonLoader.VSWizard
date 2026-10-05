@@ -140,7 +140,7 @@ DualRuntimeOptions options = new()
 ProjectGenerationResult result = generator.GenerateDualRuntimePlan(options);
 ```
 
-Each runtime independently chooses its framework, references, copied snapshot, and deployment destination. `Directory.Build.props` keeps those paths in conditional groups. The runtime defines `MONO` or `IL2CPP`; the Debug/Release portion of the configuration selects optimization, debug information, and `DEBUG`/`TRACE`. Output and intermediate directories are separated by configuration and platform to avoid sharing compiler/restore artifacts between targets. The generated entry class uses the appropriate game attributes and initialization override for each runtime. Supporting different game APIs in your own code remains your responsibility. The library also supports dual-runtime plugins through `Kind = ProjectKind.Plugin`.
+Each runtime independently chooses its framework, references, copied snapshot, and deployment destination. `Directory.Build.props` keeps those paths in conditional groups. The runtime defines `MONO` or `IL2CPP`; the Debug/Release portion of the configuration selects optimization, debug information, and `DEBUG`/`TRACE`. Output and intermediate directories are separated by configuration and platform to avoid sharing compiler/restore artifacts between targets. The generated entry class shares its initialization body between runtimes. Conditional compilation is added only when the game attributes or initialization method differ between targets. Supporting different game APIs in your own code remains your responsibility. The library also supports dual-runtime plugins through `Kind = ProjectKind.Plugin`.
 
 ```powershell
 dotnet build MyMod.slnx -c Mono-Debug

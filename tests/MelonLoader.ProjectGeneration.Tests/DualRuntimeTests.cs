@@ -47,6 +47,9 @@ namespace MelonLoader.ProjectGeneration.Tests
                 if (copy) result.CopyAssembliesTo(projectDirectory);
                 Assert.Equal(copy, result.AssemblyCopies.Count > 0);
                 Assert.Contains("DifferentNamespace.Core", result.Files["Core.cs"]);
+                Assert.Single(Regex.Matches(result.Files["Core.cs"], "public class Core"));
+                Assert.DoesNotContain("#if", result.Files["Core.cs"]);
+                Assert.DoesNotContain("#error", result.Files["Core.cs"]);
                 Assert.Equal("Example.csproj", XDocument.Parse(result.Files["Example.slnx"]).Root.Element("Project").Attribute("Path").Value);
                 if (copy)
                 {
@@ -90,8 +93,10 @@ namespace MelonLoader.ProjectGeneration.Tests
             finally { Directory.Delete(root, true); }
         }
 
-        [Fact]
-        public void BuildsAllFourSolutionConfigurationsWithCompilerFixtures()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void BuildsAllFourSolutionConfigurationsWithCompilerFixtures(bool legacyMono)
         {
             string root = Path.Combine(Path.GetTempPath(), "MelonDualBuild-" + Guid.NewGuid());
             Directory.CreateDirectory(root);
@@ -117,6 +122,12 @@ namespace MelonLoader
                 RunDotnet(stubDirectory, "build", "Loader.csproj", "-o", "output", "--nologo");
                 RuntimeTargetOptions mono = CreateTarget(root, false, false);
                 RuntimeTargetOptions il2Cpp = CreateTarget(root, true, false);
+                if (legacyMono)
+                {
+                    mono.Game.MelonVersion = new Version(0, 5, 0);
+                    mono.Game.GameName = "Mono Edition";
+                    File.Copy(Path.Combine(stubDirectory, "output", "MelonLoader.dll"), Path.Combine(mono.Game.Path, "MelonLoader", "MelonLoader.dll"), true);
+                }
                 foreach (RuntimeTargetOptions target in new[] { mono, il2Cpp })
                 {
                     string loaderPath = Path.Combine(target.Game.Path, "MelonLoader", target.Game.IsIl2Cpp ? "net6" : "net35", "MelonLoader.dll");
@@ -177,13 +188,12 @@ namespace MelonLoader
                     Il2Cpp = il2Cpp
                 });
                 string source = result.Files["Core.cs"];
-                string monoSource = source.Split("#elif MONO")[1].Split("#elif IL2CPP")[0];
-                string il2CppSource = source.Split("#elif IL2CPP")[1].Split("#else")[0];
-                Assert.Contains("Mono Edition", monoSource);
-                Assert.Contains("OnApplicationStart", monoSource);
-                Assert.DoesNotContain("OnInitializeMelon", monoSource);
-                Assert.Contains("IL2CPP Edition", il2CppSource);
-                Assert.Contains("OnInitializeMelon", il2CppSource);
+                Assert.Contains("#if MONO\n[assembly: MelonGame", source);
+                Assert.Contains("Mono Edition", source);
+                Assert.Contains("IL2CPP Edition", source);
+                Assert.Contains("#if MONO\n    public override void OnApplicationStart()\n#else\n    public override void OnInitializeMelon()\n#endif", source);
+                Assert.Single(Regex.Matches(source, "public class Core"));
+                Assert.DoesNotContain("#error", source);
                 Assert.Contains(kind == ProjectKind.Mod ? "MelonMod" : "MelonPlugin", source);
                 XDocument props = XDocument.Parse(result.Files["Directory.Build.props"]);
                 XElement[] groups = props.Root.Elements("PropertyGroup").ToArray();
@@ -205,10 +215,10 @@ namespace MelonLoader
                 Dictionary<string, string> replacements = generator.CreateDualRuntimeReplacements(
                     CreateTarget(root, false, false), CreateTarget(root, true, false), "Me",
                     projectName: "Display \"Name", rootNamespace: "SafeNamespace");
-                replacements.Add("$projectname$", "Display \"Name");
-                replacements.Add("$safeprojectname$", "SafeNamespace");
                 // Emulate the host's single substitution pass: inserted text isn't processed again.
-                string template = "#if MONO\n$MONO_CORE$\n#elif IL2CPP\n$IL2CPP_CORE$\n#endif";
+                using Stream stream = typeof(ProjectGenerator).Assembly.GetManifestResourceStream("Templates.DualRuntime.Core.cs");
+                using StreamReader reader = new(stream);
+                string template = reader.ReadToEnd();
                 string generated = Regex.Replace(template, @"\$[A-Za-z_]+\$", match => replacements[match.Value]);
                 Assert.DoesNotContain("$projectname$", generated);
                 Assert.DoesNotContain("$safeprojectname$", generated);

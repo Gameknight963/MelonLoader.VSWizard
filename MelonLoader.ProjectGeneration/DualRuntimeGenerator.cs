@@ -18,6 +18,7 @@ namespace MelonLoader.ProjectGeneration
             if (!il2Cpp.Game.IsIl2Cpp) throw new ArgumentException("The IL2CPP target must use IL2CPP game information.", nameof(il2Cpp));
             if (!Enum.IsDefined(typeof(ProjectKind), kind)) throw new ArgumentException("Unknown project kind.", nameof(kind));
             Dictionary<string, string> replacements = new();
+            Dictionary<string, Dictionary<string, string>> runtimeReplacements = new();
             foreach (KeyValuePair<string, RuntimeTargetOptions> target in new Dictionary<string, RuntimeTargetOptions>
                 { ["MONO"] = mono, ["IL2CPP"] = il2Cpp })
             {
@@ -26,17 +27,21 @@ namespace MelonLoader.ProjectGeneration
                     options.References, options.IncludeRequiredReferences, options.DeployOnBuild, options.CopyAssemblies);
                 foreach (KeyValuePair<string, string> replacement in targetReplacements)
                     replacements.Add("$" + target.Key + "_" + replacement.Key.Trim('$') + "$", replacement.Value);
-                string core = ReadTemplate(kind.ToString(), "Core.cs");
-                foreach (KeyValuePair<string, string> replacement in targetReplacements)
-                    core = core.Replace(replacement.Key, replacement.Value);
-                // Visual Studio substitutes template tokens once; inserted source must already resolve host identity tokens.
-                if (projectName != null)
-                    core = core.Replace("$projectname$", EscapeCSharp(projectName));
-                if (rootNamespace != null)
-                    core = core.Replace("$safeprojectname$", rootNamespace);
-                replacements.Add("$" + target.Key + "_CORE$", core);
+                runtimeReplacements.Add(target.Key, targetReplacements);
             }
+            Dictionary<string, string> monoReplacements = runtimeReplacements["MONO"];
+            Dictionary<string, string> il2CppReplacements = runtimeReplacements["IL2CPP"];
+            replacements.Add("$AUTHOR$", monoReplacements["$AUTHOR$"]);
+            replacements.Add("$BASE_CLASS$", kind == ProjectKind.Mod ? "MelonMod" : "MelonPlugin");
+            replacements.Add("$GAME_ATTRIBUTE$", SelectRuntimeSource(
+                "[assembly: MelonGame(" + monoReplacements["$GAME_DEV$"] + ", " + monoReplacements["$GAME_NAME$"] + ")]",
+                "[assembly: MelonGame(" + il2CppReplacements["$GAME_DEV$"] + ", " + il2CppReplacements["$GAME_NAME$"] + ")]"));
+            replacements.Add("$INIT_METHOD$", SelectRuntimeSource(
+                "    public override void " + monoReplacements["$INIT_METHOD_NAME$"] + "()",
+                "    public override void " + il2CppReplacements["$INIT_METHOD_NAME$"] + "()"));
             replacements.Add("$DEPLOY_FOLDER$", kind == ProjectKind.Mod ? "Mods" : "Plugins");
+            replacements.Add("$PROJECT_DISPLAY_NAME$", projectName == null ? "$projectname$" : EscapeCSharp(projectName));
+            replacements.Add("$CORE_NAMESPACE$", rootNamespace ?? "$safeprojectname$");
             return replacements;
         }
 
@@ -73,6 +78,11 @@ namespace MelonLoader.ProjectGeneration
                     GetCopiedDirectory(target.Game, GetDirectoryProperty(reference, directories)) + "/" + Path.GetFileName(reference.Path))));
             }
             return new ProjectGenerationResult(files, copies);
+        }
+
+        private static string SelectRuntimeSource(string mono, string il2Cpp)
+        {
+            return mono == il2Cpp ? mono : "#if MONO\n" + mono + "\n#else\n" + il2Cpp + "\n#endif";
         }
 
         private static string ReadTemplate(string kind, string name)
