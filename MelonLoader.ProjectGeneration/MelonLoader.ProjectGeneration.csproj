@@ -15,9 +15,5 @@
     <EmbeddedResource Include="Templates/Plugin/Core.cs" LogicalName="Templates.Plugin.Core.cs" />
     <EmbeddedResource Include="Templates/Plugin/ProjectTemplate.csproj" LogicalName="Templates.Plugin.ProjectTemplate.csproj" />
     <EmbeddedResource Include="Templates/Plugin/Directory.Build.props" LogicalName="Templates.Plugin.Directory.Build.props" />
-    <EmbeddedResource Include="Templates/ManualMod/Core.cs" LogicalName="Templates.ManualMod.Core.cs" />
-    <EmbeddedResource Include="Templates/ManualMod/ProjectTemplate.csproj" LogicalName="Templates.ManualMod.ProjectTemplate.csproj" />
-    <EmbeddedResource Include="Templates/ManualPlugin/Core.cs" LogicalName="Templates.ManualPlugin.Core.cs" />
-    <EmbeddedResource Include="Templates/ManualPlugin/ProjectTemplate.csproj" LogicalName="Templates.ManualPlugin.ProjectTemplate.csproj" />
   </ItemGroup>
 </Project>
