@@ -19,7 +19,7 @@
     </Project>
   </TemplateContent>
 	<WizardExtension>
-		<Assembly>MelonLoader.WizardExtension, Version=1.0.0.0, Culture=Neutral, PublicKeyToken=b05c59bf5a58e638</Assembly>
+		<Assembly>MelonLoader.WizardExtension, Version=1.0.0.0, Culture=Neutral, PublicKeyToken=246ede3953d2ce5e</Assembly>
 		<FullClassName>MelonLoader.WizardExtension.WizardImplementation</FullClassName>
 	</WizardExtension>
 </VSTemplate>

@@ -49,6 +49,6 @@ IReadOnlyDictionary<string, string> files = generator.Generate(options);
 
 `files` contains relative filenames and their complete contents. The caller controls previewing and writing them. Use a valid C# namespace and a project name suitable for a filename. `Inspect` reads the installation and throws exceptions for invalid inputs; it never displays UI. `CreateReplacements` is available for hosts using token-based templates. Game inspection still requires MelonLoader to be installed and, for IL2CPP, its assemblies to have been generated.
 
-Build the library independently with `dotnet build MelonLoader.ProjectGeneration`. Building the VSIX also requires Visual Studio SDK build tooling and the existing signing key (`MelonLoader.WizardExtension/key.snk`, not committed).
+Build the library independently with `dotnet build MelonLoader.ProjectGeneration`. Building the VSIX also requires Visual Studio SDK build tooling and the repository's strong-name key (`MelonLoader.WizardExtension/key.snk`).
 
 Run the xUnit tests with `dotnet test tests/MelonLoader.ProjectGeneration.Tests`. They use temporary fixture installations rather than requiring a real game.
