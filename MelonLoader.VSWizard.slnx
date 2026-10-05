@@ -1,0 +1,32 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="arm64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/tests/">
+    <Project Path="tests/MelonLoader.ProjectGeneration.Tests/MelonLoader.ProjectGeneration.Tests.csproj" />
+  </Folder>
+  <Project Path="MelonLoader.ManualModTemplate/MelonLoader.ManualModTemplate.csproj">
+    <Platform Solution="*|arm64" Project="arm64" />
+    <Platform Solution="*|x86" Project="x86" />
+  </Project>
+  <Project Path="MelonLoader.ManualPluginTemplate/MelonLoader.ManualPluginTemplate.csproj">
+    <Platform Solution="*|arm64" Project="arm64" />
+    <Platform Solution="*|x86" Project="x86" />
+  </Project>
+  <Project Path="MelonLoader.ModTemplate/MelonLoader.ModTemplate.csproj">
+    <Platform Solution="*|arm64" Project="arm64" />
+    <Platform Solution="*|x86" Project="x86" />
+  </Project>
+  <Project Path="MelonLoader.PluginTemplate/MelonLoader.PluginTemplate.csproj">
+    <Platform Solution="*|arm64" Project="arm64" />
+    <Platform Solution="*|x86" Project="x86" />
+  </Project>
+  <Project Path="MelonLoader.ProjectGeneration/MelonLoader.ProjectGeneration.csproj" />
+  <Project Path="MelonLoader.WizardExtension/MelonLoader.WizardExtension.csproj">
+    <Platform Solution="*|arm64" Project="arm64" />
+    <Platform Solution="*|x86" Project="x86" />
+  </Project>
+</Solution>
