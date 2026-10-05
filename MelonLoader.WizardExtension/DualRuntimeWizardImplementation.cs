@@ -33,7 +33,7 @@ namespace MelonLoader.WizardExtension
             };
             while (true)
             {
-                if (dialog.ShowDialog() != DialogResult.OK) throw new WizardCancelledException();
+                if (dialog.ShowDialog() != DialogResult.OK) throw new WizardBackoutException();
                 try
                 {
                     GameInspector inspector = new();
@@ -48,7 +48,7 @@ namespace MelonLoader.WizardExtension
                 catch (Exception exception)
                 {
                     if (MessageBox.Show(exception.Message, "Error", MessageBoxButton.OKCancel) == MessageBoxResult.Cancel)
-                        throw new WizardCancelledException();
+                        throw new WizardBackoutException();
                 }
             }
         }
