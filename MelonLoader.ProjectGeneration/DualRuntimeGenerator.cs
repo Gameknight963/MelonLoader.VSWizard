@@ -9,7 +9,8 @@ namespace MelonLoader.ProjectGeneration
     public sealed partial class ProjectGenerator
     {
         public Dictionary<string, string> CreateDualRuntimeReplacements(RuntimeTargetOptions mono,
-            RuntimeTargetOptions il2Cpp, string author, ProjectKind kind = ProjectKind.Mod)
+            RuntimeTargetOptions il2Cpp, string author, ProjectKind kind = ProjectKind.Mod,
+            string projectName = null, string rootNamespace = null)
         {
             if (mono?.Game == null) throw new ArgumentException("Supply a Mono target and its game information.", nameof(mono));
             if (il2Cpp?.Game == null) throw new ArgumentException("Supply an IL2CPP target and its game information.", nameof(il2Cpp));
@@ -28,6 +29,11 @@ namespace MelonLoader.ProjectGeneration
                 string core = ReadTemplate(kind.ToString(), "Core.cs");
                 foreach (KeyValuePair<string, string> replacement in targetReplacements)
                     core = core.Replace(replacement.Key, replacement.Value);
+                // Visual Studio substitutes template tokens once; inserted source must already resolve host identity tokens.
+                if (projectName != null)
+                    core = core.Replace("$projectname$", EscapeCSharp(projectName));
+                if (rootNamespace != null)
+                    core = core.Replace("$safeprojectname$", rootNamespace);
                 replacements.Add("$" + target.Key + "_CORE$", core);
             }
             replacements.Add("$DEPLOY_FOLDER$", kind == ProjectKind.Mod ? "Mods" : "Plugins");

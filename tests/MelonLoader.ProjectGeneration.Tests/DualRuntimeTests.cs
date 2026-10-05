@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Xml.Linq;
+using System.Text.RegularExpressions;
 using AssetRipper.Primitives;
 using Xunit;
 
@@ -188,6 +189,31 @@ namespace MelonLoader
                 Assert.Equal("true", groups[0].Element("DeployOnBuild").Value);
                 Assert.Equal("false", groups[1].Element("DeployOnBuild").Value);
                 Assert.Contains("$(GamePath)/MelonLoader", groups[0].Element("LoaderAssembliesPath").Value);
+            }
+            finally { Directory.Delete(root, true); }
+        }
+
+        [Fact]
+        public void ResolvesIdentityTokensBeforeVisualStudioInsertsSource()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "MelonDualTokens-" + Guid.NewGuid());
+            Directory.CreateDirectory(root);
+            try
+            {
+                ProjectGenerator generator = new();
+                Dictionary<string, string> replacements = generator.CreateDualRuntimeReplacements(
+                    CreateTarget(root, false, false), CreateTarget(root, true, false), "Me",
+                    projectName: "Display \"Name", rootNamespace: "SafeNamespace");
+                replacements.Add("$projectname$", "Display \"Name");
+                replacements.Add("$safeprojectname$", "SafeNamespace");
+                // Emulate the host's single substitution pass: inserted text isn't processed again.
+                string template = "#if MONO\n$MONO_CORE$\n#elif IL2CPP\n$IL2CPP_CORE$\n#endif";
+                string generated = Regex.Replace(template, @"\$[A-Za-z_]+\$", match => replacements[match.Value]);
+                Assert.DoesNotContain("$projectname$", generated);
+                Assert.DoesNotContain("$safeprojectname$", generated);
+                Assert.Contains("namespace SafeNamespace;", generated);
+                Assert.Contains("typeof(SafeNamespace.Core)", generated);
+                Assert.Contains("Display \\\"Name", generated);
             }
             finally { Directory.Delete(root, true); }
         }

@@ -20,7 +20,8 @@ namespace MelonLoader.WizardExtension
                 GameInfo il2Cpp = SelectGame(true);
                 ProjectGenerator generator = new();
                 Dictionary<string, string> replacements = generator.CreateDualRuntimeReplacements(
-                    new RuntimeTargetOptions { Game = mono }, new RuntimeTargetOptions { Game = il2Cpp }, Environment.UserName);
+                    new RuntimeTargetOptions { Game = mono }, new RuntimeTargetOptions { Game = il2Cpp }, Environment.UserName,
+                    projectName: replacementsDictionary["$projectname$"], rootNamespace: replacementsDictionary["$safeprojectname$"]);
                 foreach (KeyValuePair<string, string> replacement in replacements)
                     replacementsDictionary.Add(replacement.Key, replacement.Value);
             }
