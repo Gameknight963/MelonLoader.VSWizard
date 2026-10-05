@@ -89,6 +89,52 @@ namespace MelonLoader.ProjectGeneration.Tests
                         XDocument project = XDocument.Parse(files["Example.csproj"]);
                         XDocument props = XDocument.Parse(files["Directory.Build.props"]);
                         Assert.Equal(gamePath, props.Root.Element("PropertyGroup").Element("GamePath").Value);
+                        XElement settings = props.Root.Element("PropertyGroup");
+                        Assert.StartsWith("$(GamePath)/", settings.Element("GameAssembliesPath").Value);
+                        Assert.StartsWith("$(GamePath)/", settings.Element("LoaderAssembliesPath").Value);
+                        Assert.Equal("true", settings.Element("DeployOnBuild").Value);
+                        Assert.DoesNotContain("$(GamePath)", string.Join("", project.Descendants("HintPath").Select(element => element.Value)));
+                        Dictionary<string, string> evaluated = EvaluateProperties(props);
+                        foreach (XElement reference in project.Descendants("Reference"))
+                        {
+                            string hint = ExpandProperties(reference.Element("HintPath").Value, evaluated);
+                            AssemblyReference source = catalog.Single(candidate => candidate.Name == reference.Attribute("Include").Value);
+                            Assert.Equal(source.Path, Path.GetFullPath(hint));
+                        }
+                        // Moving the installation only requires changing the shared GamePath.
+                        string movedGame = Path.Combine(root, "Moved Game");
+                        settings.Element("GamePath").Value = movedGame;
+                        Dictionary<string, string> relocated = EvaluateProperties(props);
+                        Assert.Equal(Path.GetFullPath(Path.Combine(movedGame, ProjectGenerator.MakeRelativePath(gamePath, managed))),
+                            Path.GetFullPath(relocated["GameAssembliesPath"]));
+                        Assert.Equal(Path.GetFullPath(Path.Combine(movedGame, ProjectGenerator.MakeRelativePath(gamePath, loader))),
+                            Path.GetFullPath(relocated["LoaderAssembliesPath"]));
+
+                        string customDirectory = Path.Combine(root, "Custom & Libraries");
+                        Directory.CreateDirectory(customDirectory);
+                        string customFile = Path.Combine(customDirectory, "Custom.dll");
+                        File.WriteAllText(customFile, "fixture");
+                        IReadOnlyDictionary<string, string> custom = generator.Generate(new ProjectOptions
+                        {
+                            ProjectName = "CustomExample",
+                            RootNamespace = "CustomExample",
+                            Author = "Me",
+                            Kind = kind,
+                            Game = game,
+                            References = new[] { new AssemblyReference(customFile) },
+                            DeployOnBuild = false
+                        });
+                        XDocument customProps = XDocument.Parse(custom["Directory.Build.props"]);
+                        XElement customSettings = customProps.Root.Element("PropertyGroup");
+                        Assert.Equal("false", customSettings.Element("DeployOnBuild").Value);
+                        customSettings.Element("GamePath").Value = movedGame;
+                        Dictionary<string, string> customEvaluated = EvaluateProperties(customProps);
+                        XDocument customProject = XDocument.Parse(custom["CustomExample.csproj"]);
+                        XElement customReference = customProject.Descendants("Reference").Single(element => element.Attribute("Include").Value == "Custom");
+                        Assert.Equal(customFile, Path.GetFullPath(ExpandProperties(customReference.Element("HintPath").Value, customEvaluated)));
+                        XElement deployment = customProject.Descendants("Target").Single(element => element.Attribute("Name").Value == "DeployOutput");
+                        Assert.Equal("'$(DeployOnBuild)' == 'true'", deployment.Attribute("Condition").Value);
+                        Assert.Equal("$(GamePath)/" + (kind == ProjectKind.Mod ? "Mods" : "Plugins"), deployment.Element("Copy").Attribute("DestinationFolder").Value);
                         Assert.DoesNotContain("Include=\"mscorlib\"", files["Example.csproj"]);
                         Assert.Contains(kind == ProjectKind.Mod ? "MelonMod" : "MelonPlugin", files["Core.cs"]);
                         Assert.Contains("Author\\\"Name", files["Core.cs"]);
@@ -119,6 +165,20 @@ namespace MelonLoader.ProjectGeneration.Tests
             {
                 Directory.Delete(root, true);
             }
+        }
+        private static Dictionary<string, string> EvaluateProperties(XDocument props)
+        {
+            Dictionary<string, string> values = new();
+            foreach (XElement property in props.Root.Element("PropertyGroup").Elements())
+                values.Add(property.Name.LocalName, ExpandProperties(property.Value, values));
+            return values;
+        }
+
+        private static string ExpandProperties(string value, Dictionary<string, string> properties)
+        {
+            foreach (KeyValuePair<string, string> property in properties)
+                value = value.Replace("$(" + property.Key + ")", property.Value);
+            return value;
         }
     }
 }

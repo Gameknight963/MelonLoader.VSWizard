@@ -10,11 +10,14 @@ namespace MelonLoader.ProjectGeneration
     public sealed class ProjectGenerator
     {
         public Dictionary<string, string> CreateReplacements(GameInfo game, string author,
-            IEnumerable<AssemblyReference> references = null, bool includeRequiredReferences = true)
+            IEnumerable<AssemblyReference> references = null, bool includeRequiredReferences = true, bool deployOnBuild = true)
         {
             if (game == null) throw new ArgumentNullException(nameof(game));
             if (author == null) throw new ArgumentNullException(nameof(author));
             string framework = GetFramework(game);
+            IReadOnlyList<AssemblyReference> resolved = ResolveReferences(game, references, includeRequiredReferences, framework);
+            EnsureValidReferences(resolved);
+            Dictionary<string, string> directories = GetReferenceDirectories(game, resolved);
             return new Dictionary<string, string>
             {
                 ["$GAME_DIR$"] = SecurityElement.Escape(game.Path),
@@ -22,7 +25,9 @@ namespace MelonLoader.ProjectGeneration
                 ["$GAME_NAME$"] = CSharpLiteral(game.GameName),
                 ["$FRAMEWORK_VER$"] = framework,
                 ["$AUTHOR$"] = EscapeCSharp(author),
-                ["$PROJ_REFERENCES$"] = GenerateReferences(game, framework, references, includeRequiredReferences),
+                ["$PROJ_REFERENCES$"] = RenderReferences(resolved, directories),
+                ["$REFERENCE_PATHS$"] = RenderReferenceDirectories(game, directories),
+                ["$DEPLOY_ON_BUILD$"] = deployOnBuild ? "true" : "false",
                 ["$INIT_METHOD_NAME$"] = game.MelonVersion >= new Version(0, 5, 5) ? "OnInitializeMelon" : "OnApplicationStart",
                 ["$IMPLICIT_USINGS$"] = framework == "35" ? "disable" : "enable"
             };
@@ -39,7 +44,7 @@ namespace MelonLoader.ProjectGeneration
             if (!Enum.IsDefined(typeof(ProjectKind), options.Kind))
                 throw new ArgumentException("Unknown project kind.", nameof(options));
 
-            Dictionary<string, string> replacements = CreateReplacements(options.Game, options.Author, options.References, options.IncludeRequiredReferences);
+            Dictionary<string, string> replacements = CreateReplacements(options.Game, options.Author, options.References, options.IncludeRequiredReferences, options.DeployOnBuild);
             Dictionary<string, string> files = new();
             string kind = options.Kind.ToString();
             foreach (string name in new[] { "ProjectTemplate.csproj", "Core.cs", "Directory.Build.props" })
@@ -186,14 +191,63 @@ namespace MelonLoader.ProjectGeneration
             IEnumerable<AssemblyReference> references = null, bool includeRequiredReferences = true)
         {
             IReadOnlyList<AssemblyReference> resolved = ResolveReferences(info, references, includeRequiredReferences, framework);
-            IReadOnlyList<ReferenceDiagnostic> diagnostics = ValidateReferences(resolved);
+            EnsureValidReferences(resolved);
+            return RenderReferences(resolved, GetReferenceDirectories(info, resolved));
+        }
+
+        private void EnsureValidReferences(IReadOnlyList<AssemblyReference> references)
+        {
+            IReadOnlyList<ReferenceDiagnostic> diagnostics = ValidateReferences(references);
             if (diagnostics.Count != 0)
                 throw new InvalidOperationException(string.Join(Environment.NewLine, diagnostics.Select(diagnostic => diagnostic.Message)));
-            StringBuilder builder = new();
-            foreach (AssemblyReference reference in resolved)
+        }
+
+        private static Dictionary<string, string> GetReferenceDirectories(GameInfo game, IReadOnlyList<AssemblyReference> references)
+        {
+            string gameDirectory = game.IsIl2Cpp
+                ? Path.Combine(game.Path, "MelonLoader", game.IsMelon6Plus ? "Il2CppAssemblies" : "Managed")
+                : Path.Combine(game.DataPath, "Managed");
+            string loaderDirectory = game.MelonVersion <= new Version(0, 5, 7)
+                ? Path.Combine(game.Path, "MelonLoader")
+                : Path.Combine(game.Path, "MelonLoader", game.IsIl2Cpp ? "net6" : "net35");
+            Dictionary<string, string> directories = new()
             {
-                string filePath = MakeRelativePath(info.Path, reference.Path);
-                string hintPath = Path.IsPathRooted(filePath) ? filePath : "$(GamePath)/" + filePath;
+                ["GameAssembliesPath"] = Path.GetFullPath(gameDirectory),
+                ["LoaderAssembliesPath"] = Path.GetFullPath(loaderDirectory)
+            };
+            int additionalDirectory = 1;
+            foreach (string directory in references.Select(reference => Path.GetDirectoryName(reference.Path))
+                .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(directory => directory, StringComparer.OrdinalIgnoreCase))
+            {
+                if (!directories.Values.Contains(directory, StringComparer.OrdinalIgnoreCase))
+                    directories.Add("ReferenceAssembliesPath" + additionalDirectory++, directory);
+            }
+            return directories;
+        }
+
+        private static string RenderReferenceDirectories(GameInfo game, Dictionary<string, string> directories)
+        {
+            StringBuilder builder = new();
+            foreach (KeyValuePair<string, string> directory in directories)
+            {
+                string relative = MakeRelativePath(game.Path, directory.Value);
+                // Only factor out GamePath for directories within that installation.
+                string normalized = relative.Replace('\\', '/');
+                bool withinGame = !Path.IsPathRooted(relative) && normalized != ".." && !normalized.StartsWith("../", StringComparison.Ordinal);
+                string path = withinGame ? "$(GamePath)" + (normalized.Length == 0 ? "" : "/" + normalized.TrimEnd('/')) : directory.Value;
+                builder.AppendLine($"    <{directory.Key}>{SecurityElement.Escape(path)}</{directory.Key}>");
+            }
+            return builder.ToString().TrimEnd();
+        }
+
+        private static string RenderReferences(IReadOnlyList<AssemblyReference> references, Dictionary<string, string> directories)
+        {
+            StringBuilder builder = new();
+            foreach (AssemblyReference reference in references)
+            {
+                string directory = Path.GetDirectoryName(reference.Path);
+                string property = directories.First(entry => string.Equals(entry.Value, directory, StringComparison.OrdinalIgnoreCase)).Key;
+                string hintPath = "$(" + property + ")/" + Path.GetFileName(reference.Path);
                 builder.AppendLine($"\t\t<Reference Include=\"{SecurityElement.Escape(reference.Name)}\">");
                 builder.AppendLine($"\t\t\t<HintPath>{SecurityElement.Escape(hintPath)}</HintPath>");
                 builder.AppendLine("\t\t</Reference>");

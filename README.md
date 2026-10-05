@@ -70,3 +70,24 @@ Each reference exposes `Name`, absolute `Path`, `Category`, `Exists`, `IsRequire
 Discovery includes expected support references even when missing, so the UI can display them. Validation returns structured missing-file and conflicting-name diagnostics. Generation rejects those errors. Validation checks file availability and filename conflicts; it does not inspect assembly metadata, resolve arbitrary transitive dependencies, or establish API compatibility. Missing generated IL2CPP assemblies prevent discovery and are reported as an exception.
 
 The Visual Studio wizard keeps its existing automatic selection; interactive selection is exposed for external tool integration.
+
+### Generated paths and deployment
+
+`Directory.Build.props` contains the exact assembly directories, with their shared installation prefix factored into `GamePath`:
+
+```xml
+<Project>
+  <PropertyGroup>
+    <GamePath>D:\Games\Example</GamePath>
+    <GameAssembliesPath>$(GamePath)/MelonLoader/Il2CppAssemblies</GameAssembliesPath>
+    <LoaderAssembliesPath>$(GamePath)/MelonLoader/net6</LoaderAssembliesPath>
+    <DeployOnBuild>true</DeployOnBuild>
+  </PropertyGroup>
+</Project>
+```
+
+The generator determines the directory values from the selected installation; the generated project references `$(GameAssembliesPath)/UnityEngine.CoreModule.dll` or `$(LoaderAssembliesPath)/MelonLoader.dll` directly. Mono and older loader installations get their actual directories instead. Additional reference folders receive `ReferenceAssembliesPath1`, etc. Folders outside the installation retain independent absolute paths.
+
+Moving an installation only requires editing `GamePath`. Each assembly directory can also be overridden independently, including with a project-relative value such as `$(MSBuildThisFileDirectory)references/game`. Assembly copying is not implemented yet.
+
+`ProjectOptions.DeployOnBuild` defaults to true for compatibility with the wizard. Set it to false to disable deployment by default, edit the generated props, or run `dotnet build -p:DeployOnBuild=false`. Deployment uses an MSBuild copy task and requires an existing game directory. References remain independent of the deployment destination when their assembly directory properties are overridden.

@@ -1,5 +1,7 @@
 <Project>
   <PropertyGroup>
     <GamePath>$GAME_DIR$</GamePath>
+$REFERENCE_PATHS$
+    <DeployOnBuild>$DEPLOY_ON_BUILD$</DeployOnBuild>
   </PropertyGroup>
 </Project>
