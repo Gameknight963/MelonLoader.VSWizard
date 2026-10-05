@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Security;
+using System.Linq;
 
 namespace MelonLoader.ProjectGeneration
 {
     public sealed class ProjectGenerator
     {
-        public Dictionary<string, string> CreateReplacements(GameInfo game, string author)
+        public Dictionary<string, string> CreateReplacements(GameInfo game, string author,
+            IEnumerable<AssemblyReference> references = null, bool includeRequiredReferences = true)
         {
             if (game == null) throw new ArgumentNullException(nameof(game));
             if (author == null) throw new ArgumentNullException(nameof(author));
@@ -20,7 +22,7 @@ namespace MelonLoader.ProjectGeneration
                 ["$GAME_NAME$"] = CSharpLiteral(game.GameName),
                 ["$FRAMEWORK_VER$"] = framework,
                 ["$AUTHOR$"] = EscapeCSharp(author),
-                ["$PROJ_REFERENCES$"] = GenerateReferences(game, framework),
+                ["$PROJ_REFERENCES$"] = GenerateReferences(game, framework, references, includeRequiredReferences),
                 ["$INIT_METHOD_NAME$"] = game.MelonVersion >= new Version(0, 5, 5) ? "OnInitializeMelon" : "OnApplicationStart",
                 ["$IMPLICIT_USINGS$"] = framework == "35" ? "disable" : "enable"
             };
@@ -37,7 +39,7 @@ namespace MelonLoader.ProjectGeneration
             if (!Enum.IsDefined(typeof(ProjectKind), options.Kind))
                 throw new ArgumentException("Unknown project kind.", nameof(options));
 
-            Dictionary<string, string> replacements = CreateReplacements(options.Game, options.Author);
+            Dictionary<string, string> replacements = CreateReplacements(options.Game, options.Author, options.References, options.IncludeRequiredReferences);
             Dictionary<string, string> files = new();
             string kind = options.Kind.ToString();
             foreach (string name in new[] { "ProjectTemplate.csproj", "Core.cs", "Directory.Build.props" })
@@ -60,6 +62,7 @@ namespace MelonLoader.ProjectGeneration
 
         public string GetFramework(GameInfo info)
         {
+            if (info == null) throw new ArgumentNullException(nameof(info));
             string framework = "6.0";
             if (!info.IsMelon6Plus && info.IsIl2Cpp)
                 framework = "472";
@@ -79,8 +82,13 @@ namespace MelonLoader.ProjectGeneration
             return framework;
         }
 
-        public string GenerateReferences(GameInfo info, string framework)
+        /// <summary>Lists selectable assemblies and expected loader dependencies, including missing required files.</summary>
+        public IReadOnlyList<AssemblyReference> DiscoverReferences(GameInfo info)
+            => DiscoverReferences(info, GetFramework(info));
+
+        private IReadOnlyList<AssemblyReference> DiscoverReferences(GameInfo info, string framework)
         {
+            if (info == null) throw new ArgumentNullException(nameof(info));
             string il2cppDllDir = info.IsMelon6Plus ? Path.Combine(info.Path, "MelonLoader", "Il2CppAssemblies") : Path.Combine(info.Path, "MelonLoader", "Managed");
             string dllDir = info.IsIl2Cpp ? il2cppDllDir : Path.Combine(info.DataPath, "Managed");
 
@@ -89,8 +97,14 @@ namespace MelonLoader.ProjectGeneration
                 throw new InvalidOperationException("Game has no generated assemblies. Please run it once with MelonLoader installed before creating a project.");
             }
 
-            StringBuilder referencesBuilder = new();
-            List<string> files = [.. Directory.GetFiles(dllDir, "*.dll")];
+            List<AssemblyReference> references = new();
+            foreach (string path in Directory.GetFiles(dllDir, "*.dll").OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+            {
+                string name = Path.GetFileNameWithoutExtension(path);
+                AssemblyCategory category = ClassifyAssembly(name);
+                references.Add(new AssemblyReference(path, category, isRecommended: category != AssemblyCategory.Framework));
+            }
+            List<string> files = new();
             if (info.MelonVersion <= new Version(0, 5, 3))
                 files.Add(Path.Combine(info.Path, "MelonLoader", "MelonLoader.dll"));
             else if (info.MelonVersion <= new Version(0, 5, 7))
@@ -120,29 +134,84 @@ namespace MelonLoader.ProjectGeneration
             }
 
             foreach (string file in files)
-            {
-                if (IsBlacklistedReference(Path.GetFileName(file)))
-                    continue;
-
-                string filePath = MakeRelativePath(info.Path, file);
-
-                referencesBuilder.AppendLine($"\t\t<Reference Include=\"{SecurityElement.Escape(Path.GetFileNameWithoutExtension(filePath))}\">");
-                referencesBuilder.AppendLine($"\t\t\t<HintPath>$(GamePath)/{SecurityElement.Escape(filePath)}</HintPath>");
-                referencesBuilder.AppendLine($"\t\t</Reference>");
-            }
-
-            return referencesBuilder.ToString();
+                references.Add(new AssemblyReference(file, ClassifyAssembly(Path.GetFileNameWithoutExtension(file)), isRequired: true));
+            return references.GroupBy(reference => reference.Path, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.OrderByDescending(reference => reference.IsRequired).First()).ToList().AsReadOnly();
         }
 
-        private bool IsBlacklistedReference(string fileName)
+        /// <summary>Null selection uses recommendations; an empty selection includes only required references by default.</summary>
+        public IReadOnlyList<AssemblyReference> ResolveReferences(GameInfo info,
+            IEnumerable<AssemblyReference> selectedReferences = null, bool includeRequiredReferences = true)
+            => ResolveReferences(info, selectedReferences, includeRequiredReferences, GetFramework(info));
+
+        private IReadOnlyList<AssemblyReference> ResolveReferences(GameInfo info,
+            IEnumerable<AssemblyReference> selectedReferences, bool includeRequiredReferences, string framework)
         {
-            if (fileName == "mscorlib.dll" || fileName == "netstandard.dll" || fileName == "Mono.Security.dll")
-                return true;
+            IReadOnlyList<AssemblyReference> discovered = DiscoverReferences(info, framework);
+            List<AssemblyReference> selected = selectedReferences == null
+                ? discovered.Where(reference => reference.IsRecommended).ToList()
+                : selectedReferences.ToList();
+            if (selected.Any(reference => reference == null))
+                throw new ArgumentException("Reference selections cannot contain null entries.", nameof(selectedReferences));
+            if (includeRequiredReferences)
+                selected.AddRange(discovered.Where(reference => reference.IsRequired));
+            return selected.GroupBy(reference => reference.Path, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.OrderByDescending(reference => reference.IsRequired).First()).ToList().AsReadOnly();
+        }
 
-            if (fileName.StartsWith("System"))
-                return true;
+        /// <summary>Checks file availability and conflicting names. Does not verify API compatibility or transitive dependencies.</summary>
+        public IReadOnlyList<ReferenceDiagnostic> ValidateReferences(IEnumerable<AssemblyReference> references)
+        {
+            if (references == null) throw new ArgumentNullException(nameof(references));
+            List<AssemblyReference> selection = references.ToList();
+            if (selection.Any(reference => reference == null))
+                throw new ArgumentException("Reference selections cannot contain null entries.", nameof(references));
+            List<ReferenceDiagnostic> diagnostics = new();
+            foreach (AssemblyReference reference in selection)
+            {
+                if (!reference.Exists)
+                    diagnostics.Add(new ReferenceDiagnostic(ReferenceDiagnosticCode.MissingFile, reference,
+                        "Assembly file does not exist: " + reference.Path));
+            }
+            foreach (IGrouping<string, AssemblyReference> group in selection.GroupBy(reference => reference.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                if (group.Select(reference => reference.Path).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1)
+                    diagnostics.Add(new ReferenceDiagnostic(ReferenceDiagnosticCode.ConflictingAssemblyName, group.First(),
+                        "Multiple files have the assembly name '" + group.Key + "'. Select only one."));
+            }
+            return diagnostics.AsReadOnly();
+        }
 
-            return false;
+        public string GenerateReferences(GameInfo info, string framework,
+            IEnumerable<AssemblyReference> references = null, bool includeRequiredReferences = true)
+        {
+            IReadOnlyList<AssemblyReference> resolved = ResolveReferences(info, references, includeRequiredReferences, framework);
+            IReadOnlyList<ReferenceDiagnostic> diagnostics = ValidateReferences(resolved);
+            if (diagnostics.Count != 0)
+                throw new InvalidOperationException(string.Join(Environment.NewLine, diagnostics.Select(diagnostic => diagnostic.Message)));
+            StringBuilder builder = new();
+            foreach (AssemblyReference reference in resolved)
+            {
+                string filePath = MakeRelativePath(info.Path, reference.Path);
+                string hintPath = Path.IsPathRooted(filePath) ? filePath : "$(GamePath)/" + filePath;
+                builder.AppendLine($"\t\t<Reference Include=\"{SecurityElement.Escape(reference.Name)}\">");
+                builder.AppendLine($"\t\t\t<HintPath>{SecurityElement.Escape(hintPath)}</HintPath>");
+                builder.AppendLine("\t\t</Reference>");
+            }
+            return builder.ToString();
+        }
+
+        private static AssemblyCategory ClassifyAssembly(string name)
+        {
+            if (name == "MelonLoader") return AssemblyCategory.Loader;
+            if (name == "0Harmony") return AssemblyCategory.Harmony;
+            if (name.StartsWith("Il2Cpp", StringComparison.OrdinalIgnoreCase) || name.StartsWith("Unhollower", StringComparison.OrdinalIgnoreCase))
+                return AssemblyCategory.Interop;
+            if (name.StartsWith("UnityEngine", StringComparison.OrdinalIgnoreCase) || name.StartsWith("Unity.", StringComparison.OrdinalIgnoreCase))
+                return AssemblyCategory.Unity;
+            if (name == "mscorlib" || name == "netstandard" || name == "Mono.Security" || name == "ValueTupleBridge" || name.StartsWith("System", StringComparison.OrdinalIgnoreCase))
+                return AssemblyCategory.Framework;
+            return AssemblyCategory.Game;
         }
 
         public static string MakeRelativePath(string fromPath, string toPath)

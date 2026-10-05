@@ -52,3 +52,21 @@ IReadOnlyDictionary<string, string> files = generator.Generate(options);
 Build the library independently with `dotnet build MelonLoader.ProjectGeneration`. Building the VSIX also requires Visual Studio SDK build tooling and the repository's strong-name key (`MelonLoader.WizardExtension/key.snk`).
 
 Run the xUnit tests with `dotnet test tests/MelonLoader.ProjectGeneration.Tests`. They use temporary fixture installations rather than requiring a real game.
+
+### Reference selection for your own UI
+
+```csharp
+IReadOnlyList<AssemblyReference> available = generator.DiscoverReferences(game);
+// Show available in your UI and collect the chosen AssemblyReference objects.
+IReadOnlyList<AssemblyReference> selected = selectedByYourUi;
+IReadOnlyList<AssemblyReference> resolved = generator.ResolveReferences(game, selected);
+IReadOnlyList<ReferenceDiagnostic> diagnostics = generator.ValidateReferences(resolved);
+options.References = selected;
+IReadOnlyDictionary<string, string> output = generator.Generate(options);
+```
+
+Each reference exposes `Name`, absolute `Path`, `Category`, `Exists`, `IsRequired`, and `IsRecommended`. Framework DLLs are visible but excluded from the default recommendations. Loader support references are included automatically. A null selection preserves the automatic defaults; an empty selection includes only required support references. Advanced callers can set `IncludeRequiredReferences = false` to manage every reference themselves. Custom DLLs can be supplied with `new AssemblyReference(path)`.
+
+Discovery includes expected support references even when missing, so the UI can display them. Validation returns structured missing-file and conflicting-name diagnostics. Generation rejects those errors. Validation checks file availability and filename conflicts; it does not inspect assembly metadata, resolve arbitrary transitive dependencies, or establish API compatibility. Missing generated IL2CPP assemblies prevent discovery and are reported as an exception.
+
+The Visual Studio wizard keeps its existing automatic selection; interactive selection is exposed for external tool integration.
