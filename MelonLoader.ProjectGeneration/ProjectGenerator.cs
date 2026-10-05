@@ -10,7 +10,7 @@ namespace MelonLoader.ProjectGeneration
     public sealed class ProjectGenerator
     {
         public Dictionary<string, string> CreateReplacements(GameInfo game, string author,
-            IEnumerable<AssemblyReference> references = null, bool includeRequiredReferences = true, bool deployOnBuild = true)
+            IEnumerable<AssemblyReference> references = null, bool includeRequiredReferences = true, bool deployOnBuild = true, bool copyAssemblies = false)
         {
             if (game == null) throw new ArgumentNullException(nameof(game));
             if (author == null) throw new ArgumentNullException(nameof(author));
@@ -25,8 +25,8 @@ namespace MelonLoader.ProjectGeneration
                 ["$GAME_NAME$"] = CSharpLiteral(game.GameName),
                 ["$FRAMEWORK_VER$"] = framework,
                 ["$AUTHOR$"] = EscapeCSharp(author),
-                ["$PROJ_REFERENCES$"] = RenderReferences(resolved, directories),
-                ["$REFERENCE_PATHS$"] = RenderReferenceDirectories(game, directories),
+                ["$PROJ_REFERENCES$"] = RenderReferences(resolved, directories, copyAssemblies),
+                ["$REFERENCE_PATHS$"] = RenderReferenceDirectories(game, directories, copyAssemblies),
                 ["$DEPLOY_ON_BUILD$"] = deployOnBuild ? "true" : "false",
                 ["$INIT_METHOD_NAME$"] = game.MelonVersion >= new Version(0, 5, 5) ? "OnInitializeMelon" : "OnApplicationStart",
                 ["$IMPLICIT_USINGS$"] = framework == "35" ? "disable" : "enable"
@@ -34,7 +34,10 @@ namespace MelonLoader.ProjectGeneration
         }
 
         // Returns file contents without writing files or depending on a host UI.
-        public IReadOnlyDictionary<string, string> Generate(ProjectOptions options)
+        public IReadOnlyDictionary<string, string> Generate(ProjectOptions options) => GeneratePlan(options).Files;
+
+        /// <summary>Generates text files and an optional assembly copy plan without writing to disk.</summary>
+        public ProjectGenerationResult GeneratePlan(ProjectOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
             if (string.IsNullOrWhiteSpace(options.ProjectName))
@@ -44,7 +47,19 @@ namespace MelonLoader.ProjectGeneration
             if (!Enum.IsDefined(typeof(ProjectKind), options.Kind))
                 throw new ArgumentException("Unknown project kind.", nameof(options));
 
-            Dictionary<string, string> replacements = CreateReplacements(options.Game, options.Author, options.References, options.IncludeRequiredReferences, options.DeployOnBuild);
+            IReadOnlyList<AssemblyReference> resolved = ResolveReferences(options.Game, options.References, options.IncludeRequiredReferences);
+            Dictionary<string, string> replacements = CreateReplacements(options.Game, options.Author, resolved, false, options.DeployOnBuild, options.CopyAssemblies);
+            List<AssemblyCopy> copies = new();
+            if (options.CopyAssemblies)
+            {
+                Dictionary<string, string> directories = GetReferenceDirectories(options.Game, resolved);
+                foreach (AssemblyReference reference in resolved)
+                {
+                    string property = GetDirectoryProperty(reference, directories);
+                    string destination = GetCopiedDirectory(options.Game, property) + "/" + Path.GetFileName(reference.Path);
+                    copies.Add(new AssemblyCopy(reference.Path, destination));
+                }
+            }
             Dictionary<string, string> files = new();
             string kind = options.Kind.ToString();
             foreach (string name in new[] { "ProjectTemplate.csproj", "Core.cs", "Directory.Build.props" })
@@ -59,7 +74,7 @@ namespace MelonLoader.ProjectGeneration
                 content = content.Replace("$projectname$", source ? EscapeCSharp(options.ProjectName) : SecurityElement.Escape(options.ProjectName));
                 files.Add(name == "ProjectTemplate.csproj" ? options.ProjectName + ".csproj" : name, content);
             }
-            return files;
+            return new ProjectGenerationResult(files, copies);
         }
 
         private static string CSharpLiteral(string value) => value == null ? "null" : "\"" + EscapeCSharp(value) + "\"";
@@ -225,7 +240,7 @@ namespace MelonLoader.ProjectGeneration
             return directories;
         }
 
-        private static string RenderReferenceDirectories(GameInfo game, Dictionary<string, string> directories)
+        private static string RenderReferenceDirectories(GameInfo game, Dictionary<string, string> directories, bool copyAssemblies = false)
         {
             StringBuilder builder = new();
             foreach (KeyValuePair<string, string> directory in directories)
@@ -235,24 +250,37 @@ namespace MelonLoader.ProjectGeneration
                 string normalized = relative.Replace('\\', '/');
                 bool withinGame = !Path.IsPathRooted(relative) && normalized != ".." && !normalized.StartsWith("../", StringComparison.Ordinal);
                 string path = withinGame ? "$(GamePath)" + (normalized.Length == 0 ? "" : "/" + normalized.TrimEnd('/')) : directory.Value;
+                if (copyAssemblies)
+                    path = "$(MSBuildThisFileDirectory)" + GetCopiedDirectory(game, directory.Key);
                 builder.AppendLine($"    <{directory.Key}>{SecurityElement.Escape(path)}</{directory.Key}>");
             }
             return builder.ToString().TrimEnd();
         }
 
-        private static string RenderReferences(IReadOnlyList<AssemblyReference> references, Dictionary<string, string> directories)
+        private static string RenderReferences(IReadOnlyList<AssemblyReference> references, Dictionary<string, string> directories, bool copyAssemblies = false)
         {
             StringBuilder builder = new();
             foreach (AssemblyReference reference in references)
             {
-                string directory = Path.GetDirectoryName(reference.Path);
-                string property = directories.First(entry => string.Equals(entry.Value, directory, StringComparison.OrdinalIgnoreCase)).Key;
+                string property = GetDirectoryProperty(reference, directories);
                 string hintPath = "$(" + property + ")/" + Path.GetFileName(reference.Path);
                 builder.AppendLine($"\t\t<Reference Include=\"{SecurityElement.Escape(reference.Name)}\">");
                 builder.AppendLine($"\t\t\t<HintPath>{SecurityElement.Escape(hintPath)}</HintPath>");
+                if (copyAssemblies)
+                    builder.AppendLine("\t\t\t<Private>false</Private>");
                 builder.AppendLine("\t\t</Reference>");
             }
             return builder.ToString();
+        }
+
+        private static string GetDirectoryProperty(AssemblyReference reference, Dictionary<string, string> directories)
+            => directories.First(entry => string.Equals(entry.Value, Path.GetDirectoryName(reference.Path), StringComparison.OrdinalIgnoreCase)).Key;
+
+        private static string GetCopiedDirectory(GameInfo game, string property)
+        {
+            string folder = property == "GameAssembliesPath" ? "game"
+                : property == "LoaderAssembliesPath" ? "loader" : property;
+            return "references/" + (game.IsIl2Cpp ? "IL2CPP" : "Mono") + "/" + folder;
         }
 
         private static AssemblyCategory ClassifyAssembly(string name)

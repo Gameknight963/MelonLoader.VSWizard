@@ -16,5 +16,6 @@ namespace MelonLoader.ProjectGeneration
         public IReadOnlyList<AssemblyReference> References { get; set; }
         public bool IncludeRequiredReferences { get; set; } = true;
         public bool DeployOnBuild { get; set; } = true;
+        public bool CopyAssemblies { get; set; }
     }
 }

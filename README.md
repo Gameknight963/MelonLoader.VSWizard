@@ -88,6 +88,24 @@ The Visual Studio wizard keeps its existing automatic selection; interactive sel
 
 The generator determines the directory values from the selected installation; the generated project references `$(GameAssembliesPath)/UnityEngine.CoreModule.dll` or `$(LoaderAssembliesPath)/MelonLoader.dll` directly. Mono and older loader installations get their actual directories instead. Additional reference folders receive `ReferenceAssembliesPath1`, etc. Folders outside the installation retain independent absolute paths.
 
-Moving an installation only requires editing `GamePath`. Each assembly directory can also be overridden independently, including with a project-relative value such as `$(MSBuildThisFileDirectory)references/game`. Assembly copying is not implemented yet.
+Moving an installation only requires editing `GamePath`. Each assembly directory can also be overridden independently, including with a project-relative value such as `$(MSBuildThisFileDirectory)references/game`. Set `ProjectOptions.CopyAssemblies` to generate a local reference snapshot instead.
 
 `ProjectOptions.DeployOnBuild` defaults to true for compatibility with the wizard. Set it to false to disable deployment by default, edit the generated props, or run `dotnet build -p:DeployOnBuild=false`. Deployment uses an MSBuild copy task and requires an existing game directory. References remain independent of the deployment destination when their assembly directory properties are overridden.
+
+### Copying assembly references
+
+```csharp
+options.CopyAssemblies = true;
+options.DeployOnBuild = false;
+ProjectGenerationResult result = generator.GeneratePlan(options);
+
+// Your UI can preview result.Files, result.AssemblyCopies, and result.Warnings.
+// Write result.Files to the project directory, then explicitly execute the copy plan:
+result.CopyAssembliesTo(projectDirectory);
+```
+
+Generation never writes files. `AssemblyCopies` records each absolute source path and project-relative destination. `CopyAssembliesTo` copies selected references and the required loader support references, preserving existing files unless `overwrite: true` is supplied. It checks missing sources and existing destinations before beginning; filesystem errors during copying can still leave a partial snapshot. Sources are read when the copy plan is executed, not captured as bytes during generation.
+
+Generated assembly properties point to `$(MSBuildThisFileDirectory)references/Mono/...` or `references/IL2CPP/...`, with separate game, loader, and additional reference folders. Compiler references have `Private=false`, so these DLLs are not automatically copied into build output. The snapshot can move with the project and compilation no longer requires the game installation. Deployment remains independent and still requires `GamePath` when enabled.
+
+The original `Generate(options)` API still returns text files only; when copying is enabled, use `GeneratePlan` to get the matching copy operations too. Copying is disabled by default and the existing Visual Studio wizard continues referencing the installation. No Git ignore policy is imposed. A warning reminds callers to check redistribution permissions before publishing copied DLLs. The snapshot contains resolved selections, not an automatically discovered closure of arbitrary transitive dependencies.
