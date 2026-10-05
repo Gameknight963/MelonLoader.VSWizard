@@ -17,6 +17,24 @@ It handles the creation of the required boilerplate (the `MelonMod`/`MelonPlugin
 
 You may want to change the author in the `MelonInfo` attribute. It defaults to your computer's username.
 
+### Differences from TrevTV's version
+
+ - Removed Manual templates. They're not very useful in practice
+ - Independent generation library: Game inspection, reference selection, and project generation live in `MelonLoader.ProjectGeneration`, with no Visual Studio or UI dependency
+- Dual-runtime mod template: Separate Mono and IL2CPP installations, references, frameworks, and deployment destinations
+- Proper build configurations: `Mono-Debug`, `Mono-Release`, `Il2Cpp-Debug`, and `Il2Cpp-Release`
+- Target runtime symbols: Dual-runtime configurations define `MONO` or `IL2CPP`
+- Explicit assembly paths: `Directory.Build.props` exposes assembly directories independently of `GamePath`
+- `.slnx` solutions: It's just better lol
+- Better cancellation: Cancelling a picker or dismissing a validation error ends the wizard instead of being annoying and reopening dialogs
+- Automated tests: xUnit coverage for generation, references, copying, and compilation across all four runtime configurations
+
+#### The following features require usage of the generation library:
+
+- Custom reference selection: Your tools can discover assemblies, choose references, add custom DLLs, and validate missing files or conflicting names
+- Optional assembly copying: Copy references into the project so compilation can work without the original game installation
+- Optional deployment: Copying can be disabled now
+
 ## Reusable project generation
 
 `MelonLoader.ProjectGeneration` is a .NET Standard 2.0 library with no Visual Studio or UI dependencies. It owns game inspection, framework/reference selection, Unity metadata parsing, and the template contents. The existing template projects package linked library assets for Visual Studio; the wizard handles dialogs and forwards the library's replacements.
