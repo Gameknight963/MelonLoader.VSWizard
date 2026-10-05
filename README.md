@@ -17,12 +17,6 @@ It handles the creation of the required boilerplate (the `MelonMod`/`MelonPlugin
 
 You may want to change the author in the `MelonInfo` attribute. It defaults to your computer's username.
 
-## Licensing
-- [AssetRipper.Primitives](https://github.com/AssetRipper/Primitives) is licensed under the MIT License. See [LICENSE](https://github.com/AssetRipper/Primitives/blob/master/License.md) for the full License.
-- [AssetsTools.NET](https://github.com/nesrak1/AssetsTools.NET) is licensed under the MIT License. See [LICENSE](https://github.com/nesrak1/AssetsTools.NET/blob/master/LICENSE) for the full License.
-- [StrongNamer](https://github.com/dsplaisted/strongnamer) is licensed under the MIT License. See [LICENSE](https://github.com/dsplaisted/strongnamer/blob/master/LICENSE) for the full License.
-- [MelonLoader](https://github.com/LavaGang/MelonLoader) is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/LavaGang/MelonLoader/blob/master/LICENSE.md) for the full License.
-
 ## Reusable project generation
 
 `MelonLoader.ProjectGeneration` is a .NET Standard 2.0 library with no Visual Studio or UI dependencies. It owns game inspection, framework/reference selection, Unity metadata parsing, and the template contents. The existing template projects package linked library assets for Visual Studio; the wizard handles dialogs and forwards the library's replacements.
@@ -160,3 +154,9 @@ Template files live in [`MelonLoader.ProjectGeneration/Templates`](MelonLoader.P
 These files are embedded into the library and linked into the Visual Studio template packages at build time. Rebuild the library after editing them; rebuild and reinstall the VSIX to update the installed Visual Studio templates.
 
 The dual-runtime `Core.cs` is its own shared-class template. Its `$GAME_ATTRIBUTE$` and `$INIT_METHOD$` placeholders are populated by [`DualRuntimeGenerator.cs`](MelonLoader.ProjectGeneration/DualRuntimeGenerator.cs), which emits conditional lines only when the two targets differ. It does not insert separate copies of the Mod or Plugin entry class.
+
+## Licensing
+- [AssetRipper.Primitives](https://github.com/AssetRipper/Primitives) is licensed under the MIT License. See [LICENSE](https://github.com/AssetRipper/Primitives/blob/master/License.md) for the full License.
+- [AssetsTools.NET](https://github.com/nesrak1/AssetsTools.NET) is licensed under the MIT License. See [LICENSE](https://github.com/nesrak1/AssetsTools.NET/blob/master/LICENSE) for the full License.
+- [StrongNamer](https://github.com/dsplaisted/strongnamer) is licensed under the MIT License. See [LICENSE](https://github.com/dsplaisted/strongnamer/blob/master/LICENSE) for the full License.
+- [MelonLoader](https://github.com/LavaGang/MelonLoader) is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/LavaGang/MelonLoader/blob/master/LICENSE.md) for the full License.
