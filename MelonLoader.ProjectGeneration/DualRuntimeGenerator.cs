@@ -45,6 +45,13 @@ namespace MelonLoader.ProjectGeneration
             return replacements;
         }
 
+        /// <summary>Generates a shared mod or plugin with separate Mono and IL2CPP references and four build configurations.</summary>
+        /// <param name="options">Project identity and the two required runtime targets.</param>
+        /// <returns>Project, source, props, and solution text, plus optional per-runtime assembly copies and warnings.</returns>
+        /// <exception cref="ArgumentNullException">Options or the author is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException">Project identity or kind is invalid, either target lacks game metadata, the targets have the wrong runtimes, or a selection contains <see langword="null"/>.</exception>
+        /// <exception cref="InvalidOperationException">References are missing or conflicting, or generated IL2CPP assemblies are unavailable.</exception>
+        /// <remarks>Does not write files or copy assemblies. The generated class shares its body, adding conditional lines only for differing game metadata or initialization methods. Filesystem exceptions from discovery can propagate.</remarks>
         public ProjectGenerationResult Generate(DualRuntimeOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));

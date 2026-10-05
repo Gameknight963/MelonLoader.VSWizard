@@ -7,6 +7,7 @@ using System.Linq;
 
 namespace MelonLoader.ProjectGeneration
 {
+    /// <summary>Generates projects and resolves compiler references without UI or implicit filesystem writes.</summary>
     public sealed partial class ProjectGenerator
     {
         internal Dictionary<string, string> CreateReplacements(GameInfo game, string author,
@@ -33,7 +34,13 @@ namespace MelonLoader.ProjectGeneration
             };
         }
 
-        /// <summary>Generates text files and an optional assembly copy plan without writing to disk.</summary>
+        /// <summary>Generates a mod or plugin for one installation without writing files or executing copies.</summary>
+        /// <param name="options">Project identity, installation, reference selection, and copy/deployment settings.</param>
+        /// <returns>Generated file contents, optional assembly copy operations, and warnings.</returns>
+        /// <exception cref="ArgumentNullException">Options, game metadata, or the author is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException">Required project identity is blank, the kind is invalid, or a reference selection contains <see langword="null"/>.</exception>
+        /// <exception cref="InvalidOperationException">References are missing or conflict, or required generated IL2CPP assemblies are unavailable.</exception>
+        /// <remarks>The caller supplies a valid C# namespace and filename-compatible project name. Discovery can also propagate filesystem exceptions. Use the result's <see cref="ProjectGenerationResult.Files"/> to write text and <see cref="ProjectGenerationResult.CopyAssembliesTo(string, bool)"/> to execute copies.</remarks>
         public ProjectGenerationResult Generate(ProjectOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
@@ -99,7 +106,12 @@ namespace MelonLoader.ProjectGeneration
             return framework;
         }
 
-        /// <summary>Lists selectable assemblies and expected loader dependencies, including missing required files.</summary>
+        /// <summary>Lists game assemblies and expected loader references, including required loader files that are missing.</summary>
+        /// <param name="info">The installation metadata to inspect.</param>
+        /// <returns>A path-deduplicated list with categories, recommendation flags, and required-reference flags.</returns>
+        /// <exception cref="ArgumentNullException">Installation metadata is <see langword="null"/>.</exception>
+        /// <exception cref="InvalidOperationException">An IL2CPP installation lacks its generated assembly directory or generator configuration.</exception>
+        /// <remarks>Enumerates DLLs on disk without reading their assembly metadata. Framework assemblies are not recommended automatically. Filesystem exceptions can propagate.</remarks>
         public IReadOnlyList<AssemblyReference> DiscoverReferences(GameInfo info)
             => DiscoverReferences(info, GetFramework(info));
 
@@ -156,7 +168,15 @@ namespace MelonLoader.ProjectGeneration
                 .Select(group => group.OrderByDescending(reference => reference.IsRequired).First()).ToList().AsReadOnly();
         }
 
-        /// <summary>Null selection uses recommendations; an empty selection includes only required references by default.</summary>
+        /// <summary>Resolves an optional selection and adds required loader references when enabled.</summary>
+        /// <param name="info">The installation metadata used for discovery and required references.</param>
+        /// <param name="selectedReferences">Selected references. <see langword="null"/> uses recommendations; an empty sequence selects no optional references.</param>
+        /// <param name="includeRequiredReferences">Whether to add required loader references. Defaults to <see langword="true"/>.</param>
+        /// <returns>References deduplicated by absolute path, ignoring case. Required descriptors take precedence.</returns>
+        /// <exception cref="ArgumentNullException">Installation metadata is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException">The selection contains <see langword="null"/> entries.</exception>
+        /// <exception cref="InvalidOperationException">Required generated IL2CPP assemblies are unavailable.</exception>
+        /// <remarks>Discovery still runs for custom selections. Missing files and conflicting names are reported separately by <see cref="ProjectGenerator.ValidateReferences(System.Collections.Generic.IEnumerable{AssemblyReference})"/>.</remarks>
         public IReadOnlyList<AssemblyReference> ResolveReferences(GameInfo info,
             IEnumerable<AssemblyReference> selectedReferences = null, bool includeRequiredReferences = true)
             => ResolveReferences(info, selectedReferences, includeRequiredReferences, GetFramework(info));
@@ -176,7 +196,12 @@ namespace MelonLoader.ProjectGeneration
                 .Select(group => group.OrderByDescending(reference => reference.IsRequired).First()).ToList().AsReadOnly();
         }
 
-        /// <summary>Checks file availability and conflicting names. Does not verify API compatibility or transitive dependencies.</summary>
+        /// <summary>Checks current file availability and conflicts between filename stems, ignoring case.</summary>
+        /// <param name="references">The resolved or custom references to validate.</param>
+        /// <returns>Missing-file and conflicting-name diagnostics, or an empty list when these checks pass.</returns>
+        /// <exception cref="ArgumentNullException">The sequence is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException">The sequence contains <see langword="null"/> entries.</exception>
+        /// <remarks>Does not inspect assembly metadata, resolve transitive dependencies, or verify API compatibility.</remarks>
         public IReadOnlyList<ReferenceDiagnostic> ValidateReferences(IEnumerable<AssemblyReference> references)
         {
             if (references == null) throw new ArgumentNullException(nameof(references));

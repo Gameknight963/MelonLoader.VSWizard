@@ -4,8 +4,18 @@ using System.Diagnostics;
 
 namespace MelonLoader.ProjectGeneration
 {
+    /// <summary>Reads a Unity installation and its MelonLoader metadata without displaying UI.</summary>
     public sealed class GameInspector
     {
+        /// <summary>Inspects the installation associated with a game executable.</summary>
+        /// <param name="exe">The executable path. Relative paths are resolved against the current working directory.</param>
+        /// <returns>An immutable snapshot of installation metadata. Unavailable game metadata may be <see langword="null"/> and the Unity version may be unknown.</returns>
+        /// <remarks>Requires a Unity data folder and a readable MelonLoader installation at version 0.5 or newer.</remarks>
+        /// <exception cref="InvalidOperationException">The path is blank, the installation lacks a Unity data folder or supported MelonLoader, or the loader DLL cannot be read.</exception>
+        /// <exception cref="ArgumentException">The executable path is invalid.</exception>
+        /// <exception cref="FormatException">The loader file version cannot be parsed.</exception>
+        /// <exception cref="IOException">An installation file cannot be accessed.</exception>
+        /// <exception cref="UnauthorizedAccessException">The filesystem denies access.</exception>
         public GameInfo Inspect(string exe)
         {
             GameInspectionData info = new();
@@ -29,7 +39,7 @@ namespace MelonLoader.ProjectGeneration
             string dataDir = Path.Combine(dir, Path.GetFileNameWithoutExtension(exe) + "_Data");
             if (!Directory.Exists(dataDir))
             {
-                throw new InvalidOperationException("Path does not contain a Data folder. It may not be a Unity game.");
+                throw new InvalidOperationException("Path does not contain a Data folder. It might not be a Unity game.");
             }
 
             info.ExecutablePath = exe;

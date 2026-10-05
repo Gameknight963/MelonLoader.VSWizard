@@ -5,6 +5,7 @@ using System.IO;
 
 namespace MelonLoader.ProjectGeneration
 {
+    /// <summary>One planned assembly copy. Generation records paths without reading or copying file contents.</summary>
     public sealed class AssemblyCopy
     {
         internal AssemblyCopy(string sourcePath, string destinationRelativePath)
@@ -13,10 +14,13 @@ namespace MelonLoader.ProjectGeneration
             DestinationRelativePath = destinationRelativePath;
         }
 
+        /// <summary>Gets the absolute assembly source path. The source is read when copies are executed.</summary>
         public string SourcePath { get; }
+        /// <summary>Gets the destination relative to the generated project directory, using forward slashes.</summary>
         public string DestinationRelativePath { get; }
     }
 
+    /// <summary>Generated text, optional assembly copy operations, and warnings. Creation has no filesystem write effects.</summary>
     public sealed class ProjectGenerationResult
     {
         internal ProjectGenerationResult(Dictionary<string, string> files, List<AssemblyCopy> copies)
@@ -29,11 +33,22 @@ namespace MelonLoader.ProjectGeneration
             };
         }
 
+        /// <summary>Gets project-relative filenames and their complete text contents. The caller writes these files.</summary>
         public IReadOnlyDictionary<string, string> Files { get; }
+        /// <summary>Gets compiler-reference copies to execute explicitly. Empty when copying is disabled.</summary>
         public IReadOnlyList<AssemblyCopy> AssemblyCopies { get; }
+        /// <summary>Gets nonfatal generation warnings, including redistribution guidance when copies are planned.</summary>
         public IReadOnlyList<string> Warnings { get; }
 
-        /// <summary>Copies compiler references only. The caller writes Files separately. Existing files are preserved unless overwrite is true.</summary>
+        /// <summary>Executes planned compiler-reference copies without writing the generated text files.</summary>
+        /// <param name="projectDirectory">The destination project directory. Relative paths use the current working directory.</param>
+        /// <param name="overwrite">Whether to replace existing destination files. Defaults to <see langword="false"/>.</param>
+        /// <remarks>Missing sources and conflicting destinations are checked before copying. Source and destination paths that are identical are skipped. Directories are created as needed. Filesystem failures during copying can leave a partial snapshot.</remarks>
+        /// <exception cref="ArgumentException">The project directory is blank or invalid.</exception>
+        /// <exception cref="InvalidOperationException">A destination resolves outside the project directory.</exception>
+        /// <exception cref="FileNotFoundException">A planned assembly source is missing.</exception>
+        /// <exception cref="IOException">A destination exists and overwrite is <see langword="false"/>, a destination is a directory, or copying fails.</exception>
+        /// <exception cref="UnauthorizedAccessException">The filesystem denies access.</exception>
         public void CopyAssembliesTo(string projectDirectory, bool overwrite = false)
         {
             if (string.IsNullOrWhiteSpace(projectDirectory))
