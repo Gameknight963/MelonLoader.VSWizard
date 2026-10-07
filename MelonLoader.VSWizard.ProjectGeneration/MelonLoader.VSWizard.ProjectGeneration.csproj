@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Version>1.0.0</Version>
+    <LangVersion>latest</LangVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Description>Independent game inspection and project generation for MelonLoader mods and plugins.</Description>
+		<PackageId>MelonLoader.VSWizard.ProjectGeneration</PackageId>
+		<Authors>Gameknight963</Authors>
+		<RepositoryUrl>https://github.com/Gameknight963/MelonLoader.VSWizard</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageProjectUrl>https://github.com/Gameknight963/MelonLoader.VSWizard</PackageProjectUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageTags>MelonLoader;Unity;modding;project-generation</PackageTags>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<None Include="../LICENSE" Pack="true" PackagePath="/" />
+		<None Include="../README.md" Pack="true" PackagePath="/" />
+	</ItemGroup>
+	
+  <ItemGroup>
+    <Compile Remove="Templates/**/*.cs" />
+    <PackageReference Include="AssetRipper.Primitives" Version="3.2.0" />
+    <PackageReference Include="AssetsTools.NET" Version="3.0.4" />
+    <EmbeddedResource Include="Resources/classdata.tpk" />
+    <EmbeddedResource Include="Templates/Mod/Core.cs" LogicalName="Templates.Mod.Core.cs" />
+    <EmbeddedResource Include="Templates/Mod/ProjectTemplate.csproj" LogicalName="Templates.Mod.ProjectTemplate.csproj" />
+    <EmbeddedResource Include="Templates/Mod/Directory.Build.props" LogicalName="Templates.Mod.Directory.Build.props" />
+    <EmbeddedResource Include="Templates/Plugin/Core.cs" LogicalName="Templates.Plugin.Core.cs" />
+    <EmbeddedResource Include="Templates/Plugin/ProjectTemplate.csproj" LogicalName="Templates.Plugin.ProjectTemplate.csproj" />
+    <EmbeddedResource Include="Templates/Plugin/Directory.Build.props" LogicalName="Templates.Plugin.Directory.Build.props" />
+    <EmbeddedResource Include="Templates/DualRuntime/Core.cs" LogicalName="Templates.DualRuntime.Core.cs" />
+    <EmbeddedResource Include="Templates/DualRuntime/Directory.Build.props" LogicalName="Templates.DualRuntime.Directory.Build.props" />
+    <EmbeddedResource Include="Templates/DualRuntime/ProjectTemplate.csproj" LogicalName="Templates.DualRuntime.ProjectTemplate.csproj" />
+    <EmbeddedResource Include="Templates/DualRuntime/Solution.slnx" LogicalName="Templates.DualRuntime.Solution.slnx" />
+  </ItemGroup>
+</Project>

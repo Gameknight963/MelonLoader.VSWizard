@@ -5,23 +5,26 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Folder Name="/tests/">
-    <Project Path="tests/MelonLoader.ProjectGeneration.Tests/MelonLoader.ProjectGeneration.Tests.csproj" />
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
   </Folder>
-  <Project Path="MelonLoader.ModTemplate/MelonLoader.ModTemplate.csproj" Id="d7920cfa-47ef-4a62-86c1-7ff02737b0cd">
+  <Folder Name="/tests/">
+    <Project Path="tests/MelonLoader.VSWizard.ProjectGeneration.Tests/MelonLoader.VSWizard.ProjectGeneration.Tests.csproj" />
+  </Folder>
+  <Project Path="MelonLoader.VSWizard.DualRuntimeModTemplate/MelonLoader.VSWizard.DualRuntimeModTemplate.csproj" Id="d4f15ab1-149a-47a4-9b96-b9eec545d289">
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>
-  <Project Path="MelonLoader.PluginTemplate/MelonLoader.PluginTemplate.csproj" Id="86a95121-b313-4789-b0fb-7be19d5cbec7">
+  <Project Path="MelonLoader.VSWizard.ModTemplate/MelonLoader.VSWizard.ModTemplate.csproj" Id="d7920cfa-47ef-4a62-86c1-7ff02737b0cd">
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>
-  <Project Path="MelonLoader.ProjectGeneration/MelonLoader.ProjectGeneration.csproj" />
-  <Project Path="MelonLoader.WizardExtension/MelonLoader.WizardExtension.csproj" Id="b63634d6-971e-4fa8-ac31-4c8d6977fbca">
+  <Project Path="MelonLoader.VSWizard.PluginTemplate/MelonLoader.VSWizard.PluginTemplate.csproj" Id="86a95121-b313-4789-b0fb-7be19d5cbec7">
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>
-  <Project Path="MelonLoader.DualRuntimeModTemplate/MelonLoader.DualRuntimeModTemplate.csproj" Id="d4f15ab1-149a-47a4-9b96-b9eec545d289">
+  <Project Path="MelonLoader.VSWizard.ProjectGeneration/MelonLoader.VSWizard.ProjectGeneration.csproj" />
+  <Project Path="MelonLoader.VSWizard.WizardExtension/MelonLoader.VSWizard.WizardExtension.csproj" Id="b63634d6-971e-4fa8-ac31-4c8d6977fbca">
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>

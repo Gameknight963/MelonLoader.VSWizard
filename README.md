@@ -20,7 +20,7 @@ You may want to change the author in the `MelonInfo` attribute. It defaults to y
 ### Differences from TrevTV's version
 
  - Removed Manual templates. They're not very useful in practice
- - Independent generation library: Game inspection, reference selection, and project generation live in `MelonLoader.ProjectGeneration`, with no Visual Studio or UI dependency
+ - Independent generation library: Game inspection, reference selection, and project generation live in `MelonLoader.VSWizard.ProjectGeneration`, with no Visual Studio or UI dependency
 - Dual-runtime mod template: Separate Mono and IL2CPP installations, references, frameworks, and deployment destinations
 - Proper build configurations: `Mono-Debug`, `Mono-Release`, `Il2Cpp-Debug`, and `Il2Cpp-Release`
 - Target runtime symbols: Dual-runtime configurations define `MONO` or `IL2CPP`
@@ -37,12 +37,12 @@ You may want to change the author in the `MelonInfo` attribute. It defaults to y
 
 ## Reusable project generation
 
-`MelonLoader.ProjectGeneration` is a .NET Standard 2.0 library with no Visual Studio or UI dependencies. It owns game inspection, framework/reference selection, Unity metadata parsing, and the template contents. The existing template projects package linked library assets for Visual Studio; the wizard handles dialogs and forwards the library's replacements.
+`MelonLoader.VSWizard.ProjectGeneration` is a .NET Standard 2.0 library with no Visual Studio or UI dependencies. It owns game inspection, framework/reference selection, Unity metadata parsing, and the template contents. The existing template projects package linked library assets for Visual Studio; the wizard handles dialogs and forwards the library's replacements.
 
 Reference its project from another application:
 
 ```csharp
-using MelonLoader.ProjectGeneration;
+using MelonLoader.VSWizard.ProjectGeneration;
 using System.Collections.Generic;
 
 GameInspector inspector = new();
@@ -64,9 +64,9 @@ IReadOnlyDictionary<string, string> files = result.Files;
 
 `GameInfo` is an immutable record. Inspection populates `GameDirectory`, `ExecutablePath`, `DataDirectory`, `LoaderVersion`, `UnityVersion`, `IsIl2Cpp`, and game metadata. Custom integrations can construct it with an object initializer or create a modified copy with `with`. `UnityVersion` belongs to this library; callers do not need to use AssetRipper types. It supports parsing Unity version strings, comparisons, and `Major`, `Minor`, and `Patch` properties. `UnityVersion.Unknown` represents unavailable version metadata.
 
-Build the library independently with `dotnet build MelonLoader.ProjectGeneration`. Building the VSIX also requires Visual Studio SDK build tooling and the repository's strong-name key (`MelonLoader.WizardExtension/key.snk`).
+Build the library independently with `dotnet build MelonLoader.VSWizard.ProjectGeneration`. Building the VSIX also requires Visual Studio SDK build tooling and the repository's strong-name key (`MelonLoader.VSWizard.WizardExtension/key.snk`).
 
-Run the xUnit tests with `dotnet test tests/MelonLoader.ProjectGeneration.Tests`. They use temporary fixture installations rather than requiring a real game.
+Run the xUnit tests with `dotnet test tests/MelonLoader.VSWizard.ProjectGeneration.Tests`. They use temporary fixture installations rather than requiring a real game.
 
 ### Reference selection for your own UI
 
@@ -170,11 +170,11 @@ Tests evaluate all four combinations with installation and copied references, th
 
 ### Editing the templates
 
-Template files live in [`MelonLoader.ProjectGeneration/Templates`](MelonLoader.ProjectGeneration/Templates), in the `Mod`, `Plugin`, and `DualRuntime` directories. Edit `Core.cs` for the entry class, `ProjectTemplate.csproj` for project settings, and `Directory.Build.props` for assembly paths and deployment defaults. The dual-runtime template also has `Solution.slnx` for solution configuration mappings.
+Template files live in [`MelonLoader.VSWizard.ProjectGeneration/Templates`](MelonLoader.VSWizard.ProjectGeneration/Templates), in the `Mod`, `Plugin`, and `DualRuntime` directories. Edit `Core.cs` for the entry class, `ProjectTemplate.csproj` for project settings, and `Directory.Build.props` for assembly paths and deployment defaults. The dual-runtime template also has `Solution.slnx` for solution configuration mappings.
 
 These files are embedded into the library and linked into the Visual Studio template packages at build time. Rebuild the library after editing them; rebuild and reinstall the VSIX to update the installed Visual Studio templates.
 
-The dual-runtime `Core.cs` is its own shared-class template. Its `$GAME_ATTRIBUTE$` and `$INIT_METHOD$` placeholders are populated by [`DualRuntimeGenerator.cs`](MelonLoader.ProjectGeneration/DualRuntimeGenerator.cs), which emits conditional lines only when the two targets differ. It does not insert separate copies of the Mod or Plugin entry class.
+The dual-runtime `Core.cs` is its own shared-class template. Its `$GAME_ATTRIBUTE$` and `$INIT_METHOD$` placeholders are populated by [`DualRuntimeGenerator.cs`](MelonLoader.VSWizard.ProjectGeneration/DualRuntimeGenerator.cs), which emits conditional lines only when the two targets differ. It does not insert separate copies of the Mod or Plugin entry class.
 
 ## Licensing
 - [AssetRipper.Primitives](https://github.com/AssetRipper/Primitives) is licensed under the MIT License. See [LICENSE](https://github.com/AssetRipper/Primitives/blob/master/License.md) for the full License.
